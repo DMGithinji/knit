@@ -6,7 +6,11 @@ import { BalancesService } from '@/accounting/balances/balances.service';
 import { FamilyAccountsService } from '@/accounting/family-accounts/family-accounts.service';
 import { InvoicesService } from '@/accounting/invoices/invoices.service';
 import { PaymentEventDto } from '@/accounting/payment-events/dto/payment-event.dto';
-import { PaymentEventsService } from '@/accounting/payment-events/payment-events.service';
+import {
+  PaymentCaptureService,
+  PaymentQueryService,
+  PaymentReconciliationService,
+} from '@/accounting/payment-events/services';
 import { DatabaseService } from '@/database/database.service';
 import { SchoolProfileService } from '@/schools/profile/school-profile.service';
 
@@ -85,7 +89,7 @@ export class FixtureReplay {
   private readonly schools: SchoolProfileService;
   private readonly families: FamilyAccountsService;
   private readonly invoices: InvoicesService;
-  private readonly paymentEvents: PaymentEventsService;
+  private readonly paymentCapture: PaymentCaptureService;
   private readonly balances: BalancesService;
   private seedState?: FixtureSeed;
 
@@ -93,7 +97,14 @@ export class FixtureReplay {
     this.schools = new SchoolProfileService(database);
     this.families = new FamilyAccountsService(database, this.schools);
     this.invoices = new InvoicesService(database, this.families);
-    this.paymentEvents = new PaymentEventsService(database, this.schools);
+    const paymentEventQueries = new PaymentQueryService(database, this.schools);
+    const paymentEventReconciliation = new PaymentReconciliationService(database, this.schools);
+    this.paymentCapture = new PaymentCaptureService(
+      database,
+      this.schools,
+      paymentEventQueries,
+      paymentEventReconciliation,
+    );
     this.balances = new BalancesService(database, this.families);
   }
 
@@ -129,7 +140,7 @@ export class FixtureReplay {
     const { schoolId } = this.requireSeed();
 
     return events.map((payload) => {
-      const { event } = this.paymentEvents.ingest(schoolId, payload);
+      const { event } = this.paymentCapture.capture(schoolId, payload);
       return {
         providerEventId: payload.event_id,
         status: event.processingStatus,

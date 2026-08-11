@@ -7,7 +7,12 @@ import { FamilyAccountsService } from './family-accounts/family-accounts.service
 import { InvoicesController } from './invoices/invoices.controller';
 import { InvoicesService } from './invoices/invoices.service';
 import { PaymentEventsController } from './payment-events/payment-events.controller';
-import { PaymentEventsService } from './payment-events/payment-events.service';
+import {
+  PaymentCaptureService,
+  PaymentQueryService,
+  PaymentReconciliationService,
+  PaymentReviewService,
+} from './payment-events/services';
 
 @Module({
   imports: [SchoolsModule],
@@ -17,7 +22,23 @@ import { PaymentEventsService } from './payment-events/payment-events.service';
     PaymentEventsController,
     BalancesController,
   ],
-  providers: [FamilyAccountsService, InvoicesService, PaymentEventsService, BalancesService],
-  exports: [FamilyAccountsService, InvoicesService, PaymentEventsService, BalancesService],
+  providers: [
+    FamilyAccountsService,
+    InvoicesService,
+    PaymentCaptureService,
+    PaymentQueryService,
+    PaymentReconciliationService,
+    PaymentReviewService,
+    BalancesService,
+  ],
+  exports: [
+    FamilyAccountsService,
+    InvoicesService,
+    PaymentCaptureService,
+    PaymentQueryService,
+    PaymentReconciliationService,
+    PaymentReviewService,
+    BalancesService,
+  ],
 })
 export class AccountingModule {}

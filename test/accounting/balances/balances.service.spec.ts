@@ -1,7 +1,11 @@
 import { BalancesService } from '@/accounting/balances/balances.service';
 import { FamilyAccountsService } from '@/accounting/family-accounts/family-accounts.service';
 import { InvoicesService } from '@/accounting/invoices/invoices.service';
-import { PaymentEventsService } from '@/accounting/payment-events/payment-events.service';
+import {
+  PaymentCaptureService,
+  PaymentQueryService,
+  PaymentReconciliationService,
+} from '@/accounting/payment-events/services';
 import { SchoolProfileService } from '@/schools/profile/school-profile.service';
 import { createTestDatabase, TestDatabase } from '@test/helpers/test-database';
 
@@ -10,7 +14,7 @@ describe('BalancesService', () => {
   let schools: SchoolProfileService;
   let families: FamilyAccountsService;
   let invoices: InvoicesService;
-  let paymentEvents: PaymentEventsService;
+  let paymentCapture: PaymentCaptureService;
   let balances: BalancesService;
 
   beforeEach(() => {
@@ -18,7 +22,17 @@ describe('BalancesService', () => {
     schools = new SchoolProfileService(testDatabase.database);
     families = new FamilyAccountsService(testDatabase.database, schools);
     invoices = new InvoicesService(testDatabase.database, families);
-    paymentEvents = new PaymentEventsService(testDatabase.database, schools);
+    const paymentEventQueries = new PaymentQueryService(testDatabase.database, schools);
+    const paymentEventReconciliation = new PaymentReconciliationService(
+      testDatabase.database,
+      schools,
+    );
+    paymentCapture = new PaymentCaptureService(
+      testDatabase.database,
+      schools,
+      paymentEventQueries,
+      paymentEventReconciliation,
+    );
     balances = new BalancesService(testDatabase.database, families);
   });
 
@@ -47,7 +61,7 @@ describe('BalancesService', () => {
       ],
     });
 
-    paymentEvents.ingest(school.id, {
+    paymentCapture.capture(school.id, {
       event_id: 'evt_payment',
       type: 'payment.succeeded',
       family_id: 'fam_100',
@@ -56,7 +70,7 @@ describe('BalancesService', () => {
       currency: 'ZAR',
       occurred_at: '2026-08-01T09:14:22Z',
     });
-    paymentEvents.ingest(school.id, {
+    paymentCapture.capture(school.id, {
       event_id: 'evt_refund',
       type: 'payment.refunded',
       family_id: 'fam_100',
@@ -65,7 +79,7 @@ describe('BalancesService', () => {
       currency: 'ZAR',
       occurred_at: '2026-08-01T14:02:55Z',
     });
-    paymentEvents.ingest(school.id, {
+    paymentCapture.capture(school.id, {
       event_id: 'evt_failed',
       type: 'payment.failed',
       family_id: 'fam_100',
@@ -75,7 +89,7 @@ describe('BalancesService', () => {
       occurred_at: '2026-08-01T15:02:55Z',
       reason: 'insufficient_funds',
     });
-    paymentEvents.ingest(school.id, {
+    paymentCapture.capture(school.id, {
       event_id: 'evt_usd',
       type: 'payment.succeeded',
       family_id: 'fam_100',
@@ -163,7 +177,7 @@ describe('BalancesService', () => {
       dueAt: '2026-08-31T00:00:00Z',
       lineItems: [{ description: 'Fees', amount: 1000 }],
     });
-    paymentEvents.ingest(school.id, {
+    paymentCapture.capture(school.id, {
       event_id: 'evt_credit',
       type: 'payment.succeeded',
       family_id: 'fam_credit',
