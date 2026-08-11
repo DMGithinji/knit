@@ -15,6 +15,13 @@
       "when": 1786446925598,
       "tag": "0001_hot_scourge",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1786446980422,
+      "tag": "0002_sweet_frank_castle",
+      "breakpoints": true
     }
   ]
 }
