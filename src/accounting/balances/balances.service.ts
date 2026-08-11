@@ -106,13 +106,15 @@ export class BalancesService {
       const refundedCents = invoiceEntries
         .filter((entry) => entry.kind === 'refund')
         .reduce((total, entry) => total + entry.amountCents, 0);
+      const amountOwedCents = invoicedCents - paidCents + refundedCents;
 
       return {
         ...invoice,
         invoicedCents,
         paidCents,
         refundedCents,
-        amountOwedCents: invoicedCents - paidCents + refundedCents,
+        amountOwedCents,
+        creditCents: Math.max(-amountOwedCents, 0),
         lineItems: invoiceLines,
         financialEntries: invoiceEntries,
       };
@@ -128,6 +130,7 @@ export class BalancesService {
     const totalRefundsCents = financialEntries
       .filter((entry) => entry.kind === 'refund')
       .reduce((total, entry) => total + entry.amountCents, 0);
+    const amountOwedCents = totalInvoicedCents - totalPaymentsCents + totalRefundsCents;
 
     return {
       familyAccount: family,
@@ -136,7 +139,8 @@ export class BalancesService {
         totalInvoicedCents,
         totalPaymentsCents,
         totalRefundsCents,
-        amountOwedCents: totalInvoicedCents - totalPaymentsCents + totalRefundsCents,
+        amountOwedCents,
+        creditCents: Math.max(-amountOwedCents, 0),
         formula: 'total invoices - successful payments + refunds',
       },
       invoices: invoiceBreakdown,

@@ -92,6 +92,7 @@ describe('BalancesService', () => {
       totalPaymentsCents: 450000,
       totalRefundsCents: 100000,
       amountOwedCents: 100000,
+      creditCents: 0,
       formula: 'total invoices - successful payments + refunds',
     });
     expect(balance.invoices[0]).toMatchObject({
@@ -146,6 +147,9 @@ describe('BalancesService', () => {
       occurred_at: '2026-08-01T09:14:22Z',
     });
 
-    expect(balances.getFamilyBalance(school.id, family.id).summary.amountOwedCents).toBe(-50000);
+    expect(balances.getFamilyBalance(school.id, family.id).summary).toMatchObject({
+      amountOwedCents: -50000,
+      creditCents: 50000,
+    });
   });
 });

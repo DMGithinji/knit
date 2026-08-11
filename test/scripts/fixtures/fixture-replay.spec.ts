@@ -74,6 +74,7 @@ describe('payment event fixture replay', () => {
         totalPaymentsCents: 450000,
         totalRefundsCents: 450000,
         amountOwedCents: 450000,
+        creditCents: 0,
         attentionItems: [],
       },
       {
@@ -82,6 +83,7 @@ describe('payment event fixture replay', () => {
         totalPaymentsCents: 150000,
         totalRefundsCents: 0,
         amountOwedCents: 150000,
+        creditCents: 0,
         attentionItems: [
           {
             providerEventId: 'evt_010',
@@ -96,6 +98,7 @@ describe('payment event fixture replay', () => {
         totalPaymentsCents: 300000,
         totalRefundsCents: 0,
         amountOwedCents: 0,
+        creditCents: 0,
         attentionItems: [
           {
             providerEventId: 'evt_003',
@@ -106,10 +109,11 @@ describe('payment event fixture replay', () => {
       },
       {
         familyReference: 'fam_103',
-        totalInvoicedCents: 150000,
+        totalInvoicedCents: 75000,
         totalPaymentsCents: 150000,
         totalRefundsCents: 0,
-        amountOwedCents: 0,
+        amountOwedCents: -75000,
+        creditCents: 75000,
         attentionItems: [],
       },
       {
@@ -118,6 +122,7 @@ describe('payment event fixture replay', () => {
         totalPaymentsCents: 0,
         totalRefundsCents: 0,
         amountOwedCents: 0,
+        creditCents: 0,
         attentionItems: [
           {
             providerEventId: 'evt_008',
@@ -132,6 +137,7 @@ describe('payment event fixture replay', () => {
         totalPaymentsCents: 0,
         totalRefundsCents: 0,
         amountOwedCents: 50000,
+        creditCents: 0,
         attentionItems: [
           {
             providerEventId: 'evt_009',

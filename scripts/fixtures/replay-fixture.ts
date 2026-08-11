@@ -26,6 +26,7 @@ try {
       paymentsCents: balance.totalPaymentsCents,
       refundsCents: balance.totalRefundsCents,
       amountOwedCents: balance.amountOwedCents,
+      creditCents: balance.creditCents,
       attention: balance.attentionItems
         .map((item) => `${item.providerEventId}: ${item.status} (${item.reason ?? 'no reason'})`)
         .join('; '),

@@ -23,7 +23,7 @@ const FIXTURE_INVOICES = [
   { familyReference: 'fam_100', invoiceReference: 'inv_100', amountCents: 450000 },
   { familyReference: 'fam_101', invoiceReference: 'inv_101', amountCents: 300000 },
   { familyReference: 'fam_102', invoiceReference: 'inv_102', amountCents: 300000 },
-  { familyReference: 'fam_103', invoiceReference: 'inv_103', amountCents: 150000 },
+  { familyReference: 'fam_103', invoiceReference: 'inv_103', amountCents: 75000 },
   { familyReference: 'fam_105', invoiceReference: 'inv_105', amountCents: 50000 },
 ] as const;
 
@@ -39,6 +39,7 @@ export interface FixtureBalanceSnapshot {
   totalPaymentsCents: number;
   totalRefundsCents: number;
   amountOwedCents: number;
+  creditCents: number;
   attentionItems: Array<{
     providerEventId: string;
     status: string;
@@ -150,6 +151,7 @@ export class FixtureReplay {
         totalPaymentsCents: balance.summary.totalPaymentsCents,
         totalRefundsCents: balance.summary.totalRefundsCents,
         amountOwedCents: balance.summary.amountOwedCents,
+        creditCents: balance.summary.creditCents,
         attentionItems: balance.attentionItems.map((item) => ({
           providerEventId: item.providerEventId,
           status: item.status,
