@@ -12,6 +12,7 @@
     "db:migrate": "ts-node -r tsconfig-paths/register src/database/migrate.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "fixture:replay": "ts-node -r tsconfig-paths/register scripts/fixtures/replay-fixture.ts",
     "start": "nest start",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
