@@ -2,7 +2,7 @@ import { FamilyAccountsService } from '@/accounting/family-accounts/family-accou
 import { InvoicesService } from '@/accounting/invoices/invoices.service';
 import { PaymentEventDto } from '@/accounting/payment-events/dto/payment-event.dto';
 import { PaymentEventsService } from '@/accounting/payment-events/payment-events.service';
-import { ledgerEntries, paymentEvents } from '@/database/schema';
+import { ledgerEntries, paymentEventResolutions, paymentEvents } from '@/database/schema';
 import { SchoolProfileService } from '@/schools/profile/school-profile.service';
 import { createTestDatabase, TestDatabase } from '@test/helpers/test-database';
 
@@ -101,6 +101,58 @@ describe('PaymentEventsService', () => {
       processingStatus: 'unresolved',
       processingReason: 'unsupported_currency_requires_review',
     });
+    expect(testDatabase.database.db.select().from(ledgerEntries).all()).toHaveLength(0);
+  });
+
+  it('applies a manually verified ZAR settlement without changing the original USD event', () => {
+    const unresolved = service.ingest(schoolId, {
+      ...baseEvent,
+      event_id: 'evt_usd_reviewed',
+      currency: 'USD',
+      amount_cents: 150000,
+    });
+
+    const resolved = service.resolveManually(schoolId, unresolved.event.id, {
+      decision: 'apply_verified_zar',
+      verifiedAmountCents: 275000,
+      resolvedBy: 'bursar@knit.test',
+      resolutionReason: 'Provider confirmed a ZAR 2,750 settlement',
+    });
+
+    expect(resolved.processingStatus).toBe('applied');
+    expect(service.findById(schoolId, unresolved.event.id)).toMatchObject({
+      currency: 'USD',
+      amountCents: 150000,
+      processingReason: 'manually_verified_zar_settlement',
+    });
+    expect(testDatabase.database.db.select().from(ledgerEntries).all()).toEqual([
+      expect.objectContaining({ currency: 'ZAR', amountCents: 275000 }),
+    ]);
+    expect(testDatabase.database.db.select().from(paymentEventResolutions).all()).toEqual([
+      expect.objectContaining({
+        decision: 'apply_verified_zar',
+        verifiedAmountCents: 275000,
+        resolvedBy: 'bursar@knit.test',
+      }),
+    ]);
+  });
+
+  it('records a reviewed event as having no financial effect', () => {
+    const unresolved = service.ingest(schoolId, {
+      ...baseEvent,
+      event_id: 'evt_usd_ignored',
+      currency: 'USD',
+    });
+
+    service.resolveManually(schoolId, unresolved.event.id, {
+      decision: 'record_no_effect',
+      resolvedBy: 'bursar@knit.test',
+      resolutionReason: 'Provider confirmed this callback was erroneous',
+    });
+
+    expect(service.findById(schoolId, unresolved.event.id).processingStatus).toBe(
+      'recorded_no_effect',
+    );
     expect(testDatabase.database.db.select().from(ledgerEntries).all()).toHaveLength(0);
   });
 
