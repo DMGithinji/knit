@@ -54,7 +54,11 @@ describe('payment event fixture replay', () => {
       { providerEventId: 'evt_004', status: 'applied', reason: null },
       { providerEventId: 'evt_005', status: 'applied', reason: null },
       { providerEventId: 'evt_006', status: 'applied', reason: null },
-      { providerEventId: 'evt_007', status: 'applied', reason: null },
+      {
+        providerEventId: 'evt_007',
+        status: 'applied_requires_review',
+        reason: 'similar_payment',
+      },
       {
         providerEventId: 'evt_008',
         status: 'unresolved',
@@ -114,7 +118,13 @@ describe('payment event fixture replay', () => {
         totalRefunds: 0,
         amountOwed: -750,
         credit: 750,
-        attentionItems: [],
+        attentionItems: [
+          {
+            providerEventId: 'evt_007',
+            status: 'applied_requires_review',
+            reason: 'similar_payment',
+          },
+        ],
       },
       {
         familyReference: 'fam_104',

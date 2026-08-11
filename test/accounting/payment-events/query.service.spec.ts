@@ -87,4 +87,36 @@ describe('PaymentQueryService', () => {
       hasMore: true,
     });
   });
+
+  it('includes similar-payment review status in school-wide event results', () => {
+    context.paymentCapture.capture(context.schoolId, {
+      ...baseEvent,
+      event_id: 'evt_006',
+      occurred_at: '2026-08-01T10:44:10Z',
+    });
+    context.paymentCapture.capture(context.schoolId, {
+      ...baseEvent,
+      event_id: 'evt_007',
+      occurred_at: '2026-08-01T10:44:11Z',
+    });
+
+    const result = context.paymentQueries.search(context.schoolId, {
+      status: 'applied_requires_review',
+    });
+
+    expect(result.items).toEqual([
+      expect.objectContaining({
+        providerEventId: 'evt_007',
+        status: 'applied_requires_review',
+        reason: 'similar_payment',
+        relatedProviderEventId: 'evt_006',
+      }),
+    ]);
+    expect(context.paymentQueries.findById(context.schoolId, result.items[0].id)).toMatchObject({
+      providerEventId: 'evt_007',
+      processingStatus: 'applied_requires_review',
+      processingReason: 'similar_payment',
+      relatedProviderEventId: 'evt_006',
+    });
+  });
 });

@@ -5,6 +5,8 @@ import { DatabaseService } from '@/database/database.service';
 import { familyAccounts, invoices, ledgerEntries, paymentEvents } from '@/database/schema';
 import { SchoolProfileService } from '@/schools/profile/school-profile.service';
 
+const SIMILAR_PAYMENT_WINDOW_MS = 60_000;
+
 @Injectable()
 export class PaymentReconciliationService {
   constructor(
@@ -45,7 +47,11 @@ export class PaymentReconciliationService {
               .get()
           : event;
 
-      if (['applied', 'recorded_no_effect', 'rejected'].includes(event.processingStatus)) {
+      if (
+        ['applied', 'applied_requires_review', 'recorded_no_effect', 'rejected'].includes(
+          event.processingStatus,
+        )
+      ) {
         return linkedEvent;
       }
 
@@ -110,7 +116,47 @@ export class PaymentReconciliationService {
         })
         .run();
 
-      return this.updateStatus(transaction, event.id, 'applied', null, true);
+      let processingStatus: 'applied' | 'applied_requires_review' = 'applied';
+      let processingReason: string | null = null;
+      let relatedProviderEventId: string | null = null;
+
+      if (event.type === 'payment.succeeded') {
+        const similarPayment = this.findSimilarPayment(transaction, event, family.id);
+
+        if (similarPayment) {
+          const [relatedPayment, paymentToReview] = [event, similarPayment].sort(
+            (left, right) =>
+              Date.parse(left.occurredAt) - Date.parse(right.occurredAt) ||
+              left.providerEventId.localeCompare(right.providerEventId),
+          );
+
+          if (paymentToReview.id === event.id) {
+            processingStatus = 'applied_requires_review';
+            processingReason = 'similar_payment';
+            relatedProviderEventId = relatedPayment.providerEventId;
+          } else {
+            transaction
+              .update(paymentEvents)
+              .set({
+                processingStatus: 'applied_requires_review',
+                processingReason: 'similar_payment',
+                relatedProviderEventId: relatedPayment.providerEventId,
+                updatedAt: new Date().toISOString(),
+              })
+              .where(eq(paymentEvents.id, paymentToReview.id))
+              .run();
+          }
+        }
+      }
+
+      return this.updateStatus(
+        transaction,
+        event.id,
+        processingStatus,
+        processingReason,
+        true,
+        relatedProviderEventId,
+      );
     });
 
     const { amountCents, ...details } = reconciled;
@@ -167,7 +213,9 @@ export class PaymentReconciliationService {
     return {
       attemptedCount: pending.length,
       recoveredCount: outcomes.filter((outcome) =>
-        ['applied', 'recorded_no_effect', 'rejected'].includes(outcome.status),
+        ['applied', 'applied_requires_review', 'recorded_no_effect', 'rejected'].includes(
+          outcome.status,
+        ),
       ).length,
       stillPendingCount: outcomes.filter((outcome) =>
         ['received', 'unresolved'].includes(outcome.status),
@@ -180,9 +228,10 @@ export class PaymentReconciliationService {
   private updateStatus(
     transaction: Parameters<Parameters<DatabaseService['db']['transaction']>[0]>[0],
     eventId: string,
-    processingStatus: 'applied' | 'unresolved' | 'rejected',
+    processingStatus: 'applied' | 'applied_requires_review' | 'unresolved' | 'rejected',
     processingReason: string | null,
     resolved: boolean,
+    relatedProviderEventId: string | null = null,
   ) {
     const now = new Date().toISOString();
 
@@ -191,11 +240,51 @@ export class PaymentReconciliationService {
       .set({
         processingStatus,
         processingReason,
+        relatedProviderEventId,
         resolvedAt: resolved ? now : null,
         updatedAt: now,
       })
       .where(eq(paymentEvents.id, eventId))
       .returning()
       .get();
+  }
+
+  private findSimilarPayment(
+    transaction: Parameters<Parameters<DatabaseService['db']['transaction']>[0]>[0],
+    event: typeof paymentEvents.$inferSelect,
+    familyAccountId: string,
+  ) {
+    const eventTime = Date.parse(event.occurredAt);
+
+    return transaction
+      .select({
+        id: paymentEvents.id,
+        providerEventId: paymentEvents.providerEventId,
+        occurredAt: paymentEvents.occurredAt,
+      })
+      .from(paymentEvents)
+      .where(
+        and(
+          eq(paymentEvents.schoolId, event.schoolId),
+          eq(paymentEvents.familyAccountId, familyAccountId),
+          eq(paymentEvents.invoiceReference, event.invoiceReference),
+          eq(paymentEvents.type, 'payment.succeeded'),
+          eq(paymentEvents.amountCents, event.amountCents),
+          eq(paymentEvents.currency, event.currency),
+          inArray(paymentEvents.processingStatus, ['applied', 'applied_requires_review']),
+        ),
+      )
+      .all()
+      .map((candidate) => ({
+        ...candidate,
+        timeDifference: Math.abs(Date.parse(candidate.occurredAt) - eventTime),
+      }))
+      .filter((candidate) => candidate.timeDifference <= SIMILAR_PAYMENT_WINDOW_MS)
+      .sort(
+        (left, right) =>
+          left.timeDifference - right.timeDifference ||
+          left.occurredAt.localeCompare(right.occurredAt) ||
+          left.id.localeCompare(right.id),
+      )[0];
   }
 }

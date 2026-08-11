@@ -65,6 +65,7 @@ export class PaymentQueryService {
         occurredAt: paymentEvents.occurredAt,
         processingStatus: paymentEvents.processingStatus,
         processingReason: paymentEvents.processingReason,
+        relatedProviderEventId: paymentEvents.relatedProviderEventId,
         resolvedAt: paymentEvents.resolvedAt,
         createdAt: paymentEvents.createdAt,
       })

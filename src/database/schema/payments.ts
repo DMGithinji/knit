@@ -15,7 +15,12 @@ import { schools } from './schools';
 export type ProviderPaymentEventType = 'payment.succeeded' | 'payment.failed' | 'payment.refunded';
 
 export type PaymentEventProcessingStatus =
-  'received' | 'applied' | 'recorded_no_effect' | 'unresolved' | 'rejected';
+  | 'received'
+  | 'applied'
+  | 'applied_requires_review'
+  | 'recorded_no_effect'
+  | 'unresolved'
+  | 'rejected';
 
 export const paymentEvents = sqliteTable(
   'payment_events',
@@ -37,11 +42,19 @@ export const paymentEvents = sqliteTable(
     providerReason: text(),
     rawPayload: text({ mode: 'json' }).notNull().$type<Record<string, unknown>>(),
     processingStatus: text({
-      enum: ['received', 'applied', 'recorded_no_effect', 'unresolved', 'rejected'],
+      enum: [
+        'received',
+        'applied',
+        'applied_requires_review',
+        'recorded_no_effect',
+        'unresolved',
+        'rejected',
+      ],
     })
       .notNull()
       .default('received'),
     processingReason: text(),
+    relatedProviderEventId: text(),
     resolvedAt: text(),
     createdAt: text()
       .notNull()

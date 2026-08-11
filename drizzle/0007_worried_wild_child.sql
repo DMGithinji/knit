@@ -1,0 +1,1 @@
+ALTER TABLE `payment_events` ADD `related_provider_event_id` text;

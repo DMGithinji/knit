@@ -107,8 +107,8 @@ describe('BalancesService', () => {
       totalRefunds: 1000,
       amountOwed: 1000,
       credit: 0,
-      formula: 'total invoices - successful payments + refunds',
     });
+    expect(balance.summary).not.toHaveProperty('formula');
     expect(balance.invoices[0]).toMatchObject({
       invoiceReference: 'inv_100',
       invoiced: 4500,
@@ -195,5 +195,56 @@ describe('BalancesService', () => {
       amount: -1500,
       balanceAfter: -500,
     });
+  });
+
+  it('shows similar applied payments as attention without removing either payment', () => {
+    const school = schools.create({ name: 'Knit Academy' });
+    const family = families.create(school.id, {
+      accountReference: 'fam_103',
+      displayName: 'Similar payment family',
+    });
+    invoices.create(school.id, family.id, {
+      invoiceReference: 'inv_103',
+      currency: 'ZAR',
+      issuedAt: '2026-08-01T00:00:00Z',
+      dueAt: '2026-08-31T00:00:00Z',
+      lineItems: [{ description: 'Fees', amount: 750 }],
+    });
+    paymentCapture.capture(school.id, {
+      event_id: 'evt_006',
+      type: 'payment.succeeded',
+      family_id: 'fam_103',
+      invoice_id: 'inv_103',
+      amount_cents: 75000,
+      currency: 'ZAR',
+      occurred_at: '2026-08-01T10:44:10Z',
+    });
+    paymentCapture.capture(school.id, {
+      event_id: 'evt_007',
+      type: 'payment.succeeded',
+      family_id: 'fam_103',
+      invoice_id: 'inv_103',
+      amount_cents: 75000,
+      currency: 'ZAR',
+      occurred_at: '2026-08-01T10:44:11Z',
+    });
+
+    const balance = balances.getFamilyBalance(school.id, family.id);
+
+    expect(balance.summary).toMatchObject({
+      totalPayments: 1500,
+      amountOwed: -750,
+      credit: 750,
+    });
+    expect(balance.lines.filter((line) => line.kind === 'payment')).toHaveLength(2);
+    expect(balance.attentionItems).toEqual([
+      expect.objectContaining({
+        providerEventId: 'evt_007',
+        status: 'applied_requires_review',
+        reason: 'similar_payment',
+        relatedProviderEventId: 'evt_006',
+        note: 'Similar to evt_006; confirm whether both payments are genuine',
+      }),
+    ]);
   });
 });

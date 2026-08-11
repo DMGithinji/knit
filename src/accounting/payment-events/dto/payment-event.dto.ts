@@ -65,11 +65,31 @@ export class ManualPaymentEventResolutionDto {
 
 export class SearchPaymentEventsDto {
   @ApiPropertyOptional({
-    enum: ['received', 'applied', 'recorded_no_effect', 'unresolved', 'rejected'],
+    enum: [
+      'received',
+      'applied',
+      'applied_requires_review',
+      'recorded_no_effect',
+      'unresolved',
+      'rejected',
+    ],
   })
   @IsOptional()
-  @IsIn(['received', 'applied', 'recorded_no_effect', 'unresolved', 'rejected'])
-  status?: 'received' | 'applied' | 'recorded_no_effect' | 'unresolved' | 'rejected';
+  @IsIn([
+    'received',
+    'applied',
+    'applied_requires_review',
+    'recorded_no_effect',
+    'unresolved',
+    'rejected',
+  ])
+  status?:
+    | 'received'
+    | 'applied'
+    | 'applied_requires_review'
+    | 'recorded_no_effect'
+    | 'unresolved'
+    | 'rejected';
 
   @ApiPropertyOptional({ description: 'Filter by the processing reason' })
   @IsOptional()
