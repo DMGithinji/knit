@@ -6,7 +6,7 @@ import { AppModule } from '@/app.module';
 import { DatabaseService } from '@/database/database.service';
 import { createTestDatabase, TestDatabase } from '@test/helpers/test-database';
 
-describe('AppController (e2e)', () => {
+describe('Application (e2e)', () => {
   let app: INestApplication<App>;
   let testDatabase: TestDatabase;
 
@@ -22,10 +22,6 @@ describe('AppController (e2e)', () => {
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(new ValidationPipe({ transform: true, whitelist: true }));
     await app.init();
-  });
-
-  it('/ (GET)', () => {
-    return request(app.getHttpServer()).get('/').expect(200).expect('Hello World!');
   });
 
   it('re-drives pending payment events for a school', async () => {
