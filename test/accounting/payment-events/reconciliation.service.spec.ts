@@ -101,7 +101,7 @@ describe('PaymentReconciliationService', () => {
         amountCents: interruptedPayload.amount_cents,
         currency: interruptedPayload.currency,
         occurredAt: interruptedPayload.occurred_at,
-        rawPayload: interruptedPayload,
+        rawPayload: { ...interruptedPayload },
       })
       .returning()
       .get();

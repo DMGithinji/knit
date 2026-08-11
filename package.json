@@ -24,7 +24,8 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
-    "verify": "pnpm lint && pnpm format:check && pnpm test --runInBand && pnpm build",
+    "typecheck": "tsc --noEmit --incremental false",
+    "verify": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test --runInBand && pnpm build",
     "prepare": "husky"
   },
   "dependencies": {
