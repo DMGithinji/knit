@@ -4,7 +4,6 @@ import { plainToInstance } from 'class-transformer';
 import { validateSync } from 'class-validator';
 import { BalancesService } from '@/accounting/balances/balances.service';
 import { FamilyAccountsService } from '@/accounting/family-accounts/family-accounts.service';
-import { InvoicesService } from '@/accounting/invoices/invoices.service';
 import { PaymentEventDto } from '@/accounting/payment-events/dto/payment-event.dto';
 import {
   PaymentCaptureService,
@@ -13,23 +12,8 @@ import {
 } from '@/accounting/payment-events/services';
 import { DatabaseService } from '@/database/database.service';
 import { SchoolProfileService } from '@/schools/profile/school-profile.service';
-
-const FIXTURE_FAMILIES = [
-  { accountReference: 'fam_100', displayName: 'Fixture family 100' },
-  { accountReference: 'fam_101', displayName: 'Fixture family 101' },
-  { accountReference: 'fam_102', displayName: 'Fixture family 102' },
-  { accountReference: 'fam_103', displayName: 'Fixture family 103' },
-  { accountReference: 'fam_104', displayName: 'Fixture family 104' },
-  { accountReference: 'fam_105', displayName: 'Fixture family 105' },
-] as const;
-
-const FIXTURE_INVOICES = [
-  { familyReference: 'fam_100', invoiceReference: 'inv_100', amount: 4500 },
-  { familyReference: 'fam_101', invoiceReference: 'inv_101', amount: 3000 },
-  { familyReference: 'fam_102', invoiceReference: 'inv_102', amount: 3000 },
-  { familyReference: 'fam_103', invoiceReference: 'inv_103', amount: 750 },
-  { familyReference: 'fam_105', invoiceReference: 'inv_105', amount: 500 },
-] as const;
+import { FIXTURE_FAMILIES } from './fixture-data';
+import { FixtureSeedResult, seedFixtureData } from './fixture-seed';
 
 export interface FixtureEventOutcome {
   providerEventId: string;
@@ -49,11 +33,6 @@ export interface FixtureBalanceSnapshot {
     status: string;
     reason: string | null;
   }>;
-}
-
-interface FixtureSeed {
-  schoolId: string;
-  familyIdsByReference: Map<string, string>;
 }
 
 export function loadPaymentEventFixture(
@@ -86,53 +65,30 @@ export function loadPaymentEventFixture(
 }
 
 export class FixtureReplay {
-  private readonly schools: SchoolProfileService;
-  private readonly families: FamilyAccountsService;
-  private readonly invoices: InvoicesService;
   private readonly paymentCapture: PaymentCaptureService;
   private readonly balances: BalancesService;
-  private seedState?: FixtureSeed;
+  private seedState?: FixtureSeedResult;
 
-  constructor(database: DatabaseService) {
-    this.schools = new SchoolProfileService(database);
-    this.families = new FamilyAccountsService(database, this.schools);
-    this.invoices = new InvoicesService(database, this.families);
-    const paymentEventQueries = new PaymentQueryService(database, this.schools);
-    const paymentEventReconciliation = new PaymentReconciliationService(database, this.schools);
+  constructor(private readonly database: DatabaseService) {
+    const schools = new SchoolProfileService(database);
+    const families = new FamilyAccountsService(database, schools);
+    const paymentEventQueries = new PaymentQueryService(database, schools);
+    const paymentEventReconciliation = new PaymentReconciliationService(database, schools);
     this.paymentCapture = new PaymentCaptureService(
       database,
-      this.schools,
+      schools,
       paymentEventQueries,
       paymentEventReconciliation,
     );
-    this.balances = new BalancesService(database, this.families);
+    this.balances = new BalancesService(database, families);
   }
 
-  seed(): FixtureSeed {
+  seed(): FixtureSeedResult {
     if (this.seedState) {
       return this.seedState;
     }
 
-    const school = this.schools.create({ name: 'Knit Fixture School' });
-    const familyIdsByReference = new Map<string, string>();
-
-    for (const input of FIXTURE_FAMILIES) {
-      const family = this.families.create(school.id, input);
-      familyIdsByReference.set(family.accountReference, family.id);
-    }
-
-    for (const input of FIXTURE_INVOICES) {
-      const familyId = familyIdsByReference.get(input.familyReference)!;
-      this.invoices.create(school.id, familyId, {
-        invoiceReference: input.invoiceReference,
-        currency: 'ZAR',
-        issuedAt: '2026-08-01T00:00:00Z',
-        dueAt: '2026-08-31T23:59:59Z',
-        lineItems: [{ description: 'Fixture school fees', amount: input.amount }],
-      });
-    }
-
-    this.seedState = { schoolId: school.id, familyIdsByReference };
+    this.seedState = seedFixtureData(this.database);
     return this.seedState;
   }
 
@@ -172,7 +128,7 @@ export class FixtureReplay {
     });
   }
 
-  private requireSeed(): FixtureSeed {
+  private requireSeed(): FixtureSeedResult {
     if (!this.seedState) {
       throw new Error('Fixture data must be seeded before events can be replayed');
     }
