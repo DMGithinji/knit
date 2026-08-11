@@ -1,0 +1,187 @@
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { and, eq } from 'drizzle-orm';
+import { DatabaseService } from '@/database/database.service';
+import { familyAccounts, invoices, ledgerEntries, paymentEvents } from '@/database/schema';
+import { SchoolProfileService } from '@/schools/profile/school-profile.service';
+import { PaymentEventDto } from './dto/payment-event.dto';
+
+@Injectable()
+export class PaymentEventsService {
+  constructor(
+    private readonly database: DatabaseService,
+    private readonly schools: SchoolProfileService,
+  ) {}
+
+  ingest(schoolId: string, payload: PaymentEventDto) {
+    this.schools.findById(schoolId);
+    const rawPayload = { ...payload } as Record<string, unknown>;
+
+    const eventId = this.database.db.transaction((transaction) => {
+      const created = transaction
+        .insert(paymentEvents)
+        .values({
+          schoolId,
+          providerEventId: payload.event_id,
+          type: payload.type,
+          familyReference: payload.family_id,
+          invoiceReference: payload.invoice_id,
+          amountCents: payload.amount_cents,
+          currency: payload.currency,
+          occurredAt: payload.occurred_at,
+          providerReason: payload.reason,
+          rawPayload,
+        })
+        .onConflictDoNothing()
+        .returning()
+        .get();
+
+      if (created) {
+        return created.id;
+      }
+
+      return transaction
+        .select({ id: paymentEvents.id })
+        .from(paymentEvents)
+        .where(
+          and(
+            eq(paymentEvents.schoolId, schoolId),
+            eq(paymentEvents.providerEventId, payload.event_id),
+          ),
+        )
+        .get()!.id;
+    });
+
+    this.reconcile(schoolId, eventId);
+
+    return {
+      event: this.findById(schoolId, eventId),
+    };
+  }
+
+  reconcile(schoolId: string, eventId: string) {
+    return this.database.db.transaction((transaction) => {
+      const event = transaction
+        .select()
+        .from(paymentEvents)
+        .where(and(eq(paymentEvents.schoolId, schoolId), eq(paymentEvents.id, eventId)))
+        .get();
+
+      if (!event) {
+        throw new NotFoundException(`Payment event ${eventId} was not found`);
+      }
+
+      if (['applied', 'recorded_no_effect', 'rejected'].includes(event.processingStatus)) {
+        return event;
+      }
+
+      if (event.type === 'payment.failed') {
+        return transaction
+          .update(paymentEvents)
+          .set({
+            processingStatus: 'recorded_no_effect',
+            processingReason: event.providerReason ?? 'payment_failed',
+            resolvedAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          })
+          .where(eq(paymentEvents.id, event.id))
+          .returning()
+          .get();
+      }
+
+      if (event.amountCents <= 0) {
+        return this.updateStatus(transaction, event.id, 'rejected', 'invalid_amount', true);
+      }
+
+      if (event.currency !== 'ZAR') {
+        return this.updateStatus(
+          transaction,
+          event.id,
+          'unresolved',
+          'unsupported_currency_requires_review',
+          false,
+        );
+      }
+
+      const family = transaction
+        .select()
+        .from(familyAccounts)
+        .where(
+          and(
+            eq(familyAccounts.schoolId, schoolId),
+            eq(familyAccounts.accountReference, event.familyReference),
+          ),
+        )
+        .get();
+
+      if (!family) {
+        return this.updateStatus(transaction, event.id, 'unresolved', 'family_not_found', false);
+      }
+
+      const invoice = transaction
+        .select()
+        .from(invoices)
+        .where(
+          and(
+            eq(invoices.familyAccountId, family.id),
+            eq(invoices.invoiceReference, event.invoiceReference),
+          ),
+        )
+        .get();
+
+      if (!invoice) {
+        return this.updateStatus(transaction, event.id, 'unresolved', 'invoice_not_found', false);
+      }
+
+      transaction
+        .insert(ledgerEntries)
+        .values({
+          schoolId,
+          familyAccountId: family.id,
+          invoiceId: invoice.id,
+          paymentEventId: event.id,
+          kind: event.type === 'payment.refunded' ? 'refund' : 'payment',
+          amountCents: event.amountCents,
+          currency: 'ZAR',
+          occurredAt: event.occurredAt,
+        })
+        .run();
+
+      return this.updateStatus(transaction, event.id, 'applied', null, true);
+    });
+  }
+
+  findById(schoolId: string, eventId: string) {
+    const event = this.database.db
+      .select()
+      .from(paymentEvents)
+      .where(and(eq(paymentEvents.schoolId, schoolId), eq(paymentEvents.id, eventId)))
+      .get();
+
+    if (!event) {
+      throw new NotFoundException(`Payment event ${eventId} was not found`);
+    }
+
+    return event;
+  }
+
+  private updateStatus(
+    transaction: Parameters<Parameters<DatabaseService['db']['transaction']>[0]>[0],
+    eventId: string,
+    processingStatus: 'applied' | 'unresolved' | 'rejected',
+    processingReason: string | null,
+    resolved: boolean,
+  ) {
+    const now = new Date().toISOString();
+    return transaction
+      .update(paymentEvents)
+      .set({
+        processingStatus,
+        processingReason,
+        resolvedAt: resolved ? now : null,
+        updatedAt: now,
+      })
+      .where(eq(paymentEvents.id, eventId))
+      .returning()
+      .get();
+  }
+}
