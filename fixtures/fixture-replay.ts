@@ -57,7 +57,7 @@ interface FixtureSeed {
 }
 
 export function loadPaymentEventFixture(
-  fixturePath = join(process.cwd(), 'scripts', 'fixtures', 'events.json'),
+  fixturePath = join(process.cwd(), 'fixtures', 'events.json'),
 ): PaymentEventDto[] {
   const parsed = JSON.parse(readFileSync(fixturePath, 'utf8')) as unknown;
 

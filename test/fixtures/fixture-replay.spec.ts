@@ -1,5 +1,5 @@
 import { ledgerEntries, paymentEvents } from '@/database/schema';
-import { FixtureReplay, loadPaymentEventFixture } from '@scripts/fixtures/fixture-replay';
+import { FixtureReplay, loadPaymentEventFixture } from '@fixtures/fixture-replay';
 import { createTestDatabase, TestDatabase } from '@test/helpers/test-database';
 
 function deterministicallyShuffle<T>(values: T[]): T[] {

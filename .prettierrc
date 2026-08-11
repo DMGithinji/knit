@@ -8,7 +8,7 @@
     "^node:",
     "^@nestjs/(.*)$",
     "<THIRD_PARTY_MODULES>",
-    "^@(?:/|test/|scripts/)",
+    "^@(?:/|test/|fixtures/)",
     "^[./]"
   ],
   "importOrderParserPlugins": ["typescript", "decorators-legacy"],

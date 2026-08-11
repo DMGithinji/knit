@@ -12,12 +12,12 @@
     "db:migrate": "ts-node -r tsconfig-paths/register src/database/migrate.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "fixture:replay": "ts-node -r tsconfig-paths/register scripts/fixtures/replay-fixture.ts",
+    "fixture:replay": "ts-node -r tsconfig-paths/register fixtures/replay-fixture.ts",
     "start": "nest start",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
-    "lint": "eslint \"{src,test,scripts}/**/*.ts\"",
+    "lint": "eslint \"{src,test,fixtures}/**/*.ts\"",
     "lint:fix": "pnpm lint --fix",
     "test": "jest",
     "test:watch": "jest --watch",
@@ -73,7 +73,7 @@
     "typescript-eslint": "^8.20.0"
   },
   "lint-staged": {
-    "{src,test,scripts}/**/*.{ts,js}": [
+    "{src,test,fixtures}/**/*.{ts,js}": [
       "prettier --write",
       "eslint --fix"
     ],
@@ -103,7 +103,7 @@
     "moduleNameMapper": {
       "^@/(.*)$": "<rootDir>/src/$1",
       "^@test/(.*)$": "<rootDir>/test/$1",
-      "^@scripts/(.*)$": "<rootDir>/scripts/$1"
+      "^@fixtures/(.*)$": "<rootDir>/fixtures/$1"
     }
   }
 }
