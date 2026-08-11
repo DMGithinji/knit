@@ -73,10 +73,7 @@ export class BalancesService {
       .select()
       .from(paymentEvents)
       .where(
-        and(
-          eq(paymentEvents.schoolId, schoolId),
-          eq(paymentEvents.familyReference, family.accountReference),
-        ),
+        and(eq(paymentEvents.schoolId, schoolId), eq(paymentEvents.familyAccountId, family.id)),
       )
       .all();
     const eventIds = events.map((event) => event.id);

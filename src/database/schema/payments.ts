@@ -24,6 +24,7 @@ export const paymentEvents = sqliteTable(
     schoolId: text()
       .notNull()
       .references(() => schools.id, { onDelete: 'restrict' }),
+    familyAccountId: text().references(() => familyAccounts.id, { onDelete: 'restrict' }),
     providerEventId: text().notNull(),
     type: text({
       enum: ['payment.succeeded', 'payment.failed', 'payment.refunded'],
@@ -55,6 +56,7 @@ export const paymentEvents = sqliteTable(
       table.providerEventId,
     ),
     uniqueIndex('payment_events_school_id_id_unique').on(table.schoolId, table.id),
+    index('payment_events_family_account_idx').on(table.familyAccountId),
     index('payment_events_processing_status_idx').on(table.processingStatus),
   ],
 );

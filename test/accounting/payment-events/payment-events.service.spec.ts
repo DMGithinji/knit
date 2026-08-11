@@ -71,6 +71,7 @@ describe('PaymentEventsService', () => {
     });
 
     expect(result.event).toMatchObject({
+      familyAccountId,
       processingStatus: 'recorded_no_effect',
       processingReason: 'insufficient_funds',
     });
@@ -85,6 +86,7 @@ describe('PaymentEventsService', () => {
     });
 
     expect(result.event).toMatchObject({
+      familyAccountId,
       processingStatus: 'rejected',
       processingReason: 'invalid_amount',
     });
@@ -98,6 +100,7 @@ describe('PaymentEventsService', () => {
     });
 
     expect(result.event).toMatchObject({
+      familyAccountId,
       processingStatus: 'unresolved',
       processingReason: 'unsupported_currency_requires_review',
     });
@@ -163,6 +166,7 @@ describe('PaymentEventsService', () => {
       invoice_id: 'inv_late',
     });
 
+    expect(unresolved.event.familyAccountId).toBe(familyAccountId);
     expect(unresolved.event.processingStatus).toBe('unresolved');
 
     invoices.create(schoolId, familyAccountId, {

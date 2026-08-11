@@ -80,8 +80,29 @@ export class PaymentEventsService {
         throw new NotFoundException(`Payment event ${eventId} was not found`);
       }
 
+      const family = transaction
+        .select()
+        .from(familyAccounts)
+        .where(
+          and(
+            eq(familyAccounts.schoolId, schoolId),
+            eq(familyAccounts.accountReference, event.familyReference),
+          ),
+        )
+        .get();
+
+      const linkedEvent =
+        family && event.familyAccountId !== family.id
+          ? transaction
+              .update(paymentEvents)
+              .set({ familyAccountId: family.id, updatedAt: new Date().toISOString() })
+              .where(eq(paymentEvents.id, event.id))
+              .returning()
+              .get()
+          : event;
+
       if (['applied', 'recorded_no_effect', 'rejected'].includes(event.processingStatus)) {
-        return event;
+        return linkedEvent;
       }
 
       if (event.type === 'payment.failed') {
@@ -111,17 +132,6 @@ export class PaymentEventsService {
           false,
         );
       }
-
-      const family = transaction
-        .select()
-        .from(familyAccounts)
-        .where(
-          and(
-            eq(familyAccounts.schoolId, schoolId),
-            eq(familyAccounts.accountReference, event.familyReference),
-          ),
-        )
-        .get();
 
       if (!family) {
         return this.updateStatus(transaction, event.id, 'unresolved', 'family_not_found', false);
@@ -234,22 +244,30 @@ export class PaymentEventsService {
         throw new ConflictException('Only unresolved payment events can be reviewed manually');
       }
 
+      const family = transaction
+        .select()
+        .from(familyAccounts)
+        .where(
+          and(
+            eq(familyAccounts.schoolId, schoolId),
+            eq(familyAccounts.accountReference, event.familyReference),
+          ),
+        )
+        .get();
+
+      if (family && event.familyAccountId !== family.id) {
+        transaction
+          .update(paymentEvents)
+          .set({ familyAccountId: family.id, updatedAt: new Date().toISOString() })
+          .where(eq(paymentEvents.id, event.id))
+          .run();
+      }
+
       if (input.decision === 'apply_verified_zar') {
         if (input.verifiedAmount === undefined) {
           throw new BadRequestException('A verified ZAR amount is required');
         }
         const verifiedAmountCents = randToCents(input.verifiedAmount);
-
-        const family = transaction
-          .select()
-          .from(familyAccounts)
-          .where(
-            and(
-              eq(familyAccounts.schoolId, schoolId),
-              eq(familyAccounts.accountReference, event.familyReference),
-            ),
-          )
-          .get();
 
         if (!family) {
           throw new BadRequestException('The referenced family must exist before applying payment');
@@ -304,6 +322,7 @@ export class PaymentEventsService {
       const resolved = transaction
         .update(paymentEvents)
         .set({
+          familyAccountId: family?.id,
           processingStatus:
             input.decision === 'apply_verified_zar' ? 'applied' : 'recorded_no_effect',
           processingReason:
