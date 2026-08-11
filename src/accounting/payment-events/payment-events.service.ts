@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import {
@@ -34,8 +35,43 @@ import {
   SearchPaymentEventsDto,
 } from './dto/payment-event.dto';
 
+const MATERIAL_FIELDS = [
+  'type',
+  'family_id',
+  'invoice_id',
+  'amount_cents',
+  'currency',
+  'occurred_at',
+] as const;
+
+type MaterialField = (typeof MATERIAL_FIELDS)[number];
+
+function materialDifferences(
+  stored: typeof paymentEvents.$inferSelect,
+  incoming: PaymentEventDto,
+): MaterialField[] {
+  const storedFacts = {
+    type: stored.type,
+    family_id: stored.familyReference,
+    invoice_id: stored.invoiceReference,
+    amount_cents: stored.amountCents,
+    currency: stored.currency,
+    occurred_at: stored.occurredAt,
+  };
+
+  return MATERIAL_FIELDS.filter((field) => {
+    if (field === 'occurred_at') {
+      return Date.parse(storedFacts.occurred_at) !== Date.parse(incoming.occurred_at);
+    }
+
+    return storedFacts[field] !== incoming[field];
+  });
+}
+
 @Injectable()
 export class PaymentEventsService {
+  private readonly logger = new Logger(PaymentEventsService.name);
+
   constructor(
     private readonly database: DatabaseService,
     private readonly schools: SchoolProfileService,
@@ -45,7 +81,7 @@ export class PaymentEventsService {
     this.schools.findById(schoolId);
     const rawPayload = { ...payload } as Record<string, unknown>;
 
-    const eventId = this.database.db.transaction((transaction) => {
+    const delivery = this.database.db.transaction((transaction) => {
       const created = transaction
         .insert(paymentEvents)
         .values({
@@ -65,11 +101,15 @@ export class PaymentEventsService {
         .get();
 
       if (created) {
-        return created.id;
+        return {
+          eventId: created.id,
+          deliveryOutcome: 'accepted' as const,
+          conflictingFields: [] as MaterialField[],
+        };
       }
 
-      return transaction
-        .select({ id: paymentEvents.id })
+      const existing = transaction
+        .select()
         .from(paymentEvents)
         .where(
           and(
@@ -77,12 +117,36 @@ export class PaymentEventsService {
             eq(paymentEvents.providerEventId, payload.event_id),
           ),
         )
-        .get()!.id;
+        .get()!;
+      const conflictingFields = materialDifferences(existing, payload);
+
+      return {
+        eventId: existing.id,
+        deliveryOutcome:
+          conflictingFields.length > 0
+            ? ('conflicting_duplicate' as const)
+            : ('duplicate' as const),
+        conflictingFields,
+      };
     });
 
-    this.reconcile(schoolId, eventId);
+    if (delivery.deliveryOutcome === 'conflicting_duplicate') {
+      this.logger.error({
+        message: 'Conflicting payment event re-delivery',
+        schoolId,
+        eventId: delivery.eventId,
+        providerEventId: payload.event_id,
+        conflictingFields: delivery.conflictingFields,
+      });
+    }
 
-    return { event: this.findById(schoolId, eventId) };
+    this.reconcile(schoolId, delivery.eventId);
+
+    return {
+      deliveryOutcome: delivery.deliveryOutcome,
+      conflictingFields: delivery.conflictingFields,
+      event: this.findById(schoolId, delivery.eventId),
+    };
   }
 
   reconcile(schoolId: string, eventId: string) {

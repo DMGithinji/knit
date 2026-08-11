@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post, Query } from '@nestjs/common';
 import {
   ManualPaymentEventResolutionDto,
   PaymentEventDto,
@@ -11,6 +11,7 @@ export class PaymentEventsController {
   constructor(private readonly paymentEvents: PaymentEventsService) {}
 
   @Post('callback')
+  @HttpCode(HttpStatus.OK)
   ingest(@Param('schoolId') schoolId: string, @Body() payload: PaymentEventDto) {
     return this.paymentEvents.ingest(schoolId, payload);
   }

@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import { FamilyAccountsService } from '@/accounting/family-accounts/family-accounts.service';
 import { InvoicesService } from '@/accounting/invoices/invoices.service';
 import { PaymentEventDto } from '@/accounting/payment-events/dto/payment-event.dto';
@@ -48,6 +49,7 @@ describe('PaymentEventsService', () => {
   });
 
   afterEach(() => {
+    jest.restoreAllMocks();
     testDatabase.cleanup();
   });
 
@@ -55,11 +57,60 @@ describe('PaymentEventsService', () => {
     const first = service.ingest(schoolId, baseEvent);
     const replay = service.ingest(schoolId, baseEvent);
 
-    expect(first.event.processingStatus).toBe('applied');
-    expect(replay.event).toMatchObject({ id: first.event.id, processingStatus: 'applied' });
+    expect(first).toMatchObject({
+      deliveryOutcome: 'accepted',
+      conflictingFields: [],
+      event: { processingStatus: 'applied' },
+    });
+    expect(replay).toMatchObject({
+      deliveryOutcome: 'duplicate',
+      conflictingFields: [],
+      event: { id: first.event.id, processingStatus: 'applied' },
+    });
     expect(testDatabase.database.db.select().from(ledgerEntries).all()).toEqual([
       expect.objectContaining({ kind: 'payment', amountCents: 450000 }),
     ]);
+  });
+
+  it('flags changed money facts without changing the stored event', () => {
+    const logError = jest.spyOn(Logger.prototype, 'error').mockImplementation();
+    service.ingest(schoolId, baseEvent);
+
+    const conflict = service.ingest(schoolId, { ...baseEvent, amount_cents: 900000 });
+
+    expect(conflict).toMatchObject({
+      deliveryOutcome: 'conflicting_duplicate',
+      conflictingFields: ['amount_cents'],
+      event: { amount: 4500, processingStatus: 'applied' },
+    });
+    expect(logError).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: 'Conflicting payment event re-delivery',
+        providerEventId: baseEvent.event_id,
+        conflictingFields: ['amount_cents'],
+      }),
+    );
+    expect(testDatabase.database.db.select().from(paymentEvents).all()).toEqual([
+      expect.objectContaining({ amountCents: 450000 }),
+    ]);
+    expect(testDatabase.database.db.select().from(ledgerEntries).all()).toHaveLength(1);
+  });
+
+  it('ignores reason changes and equivalent timestamp formatting on a retry', () => {
+    service.ingest(schoolId, baseEvent);
+
+    const retry = service.ingest(schoolId, {
+      ...baseEvent,
+      occurred_at: '2026-08-01T11:14:22+02:00',
+      reason: 'provider added context on retry',
+    });
+
+    expect(retry).toMatchObject({
+      deliveryOutcome: 'duplicate',
+      conflictingFields: [],
+      event: { amount: 4500, occurredAt: baseEvent.occurred_at },
+    });
+    expect(testDatabase.database.db.select().from(ledgerEntries).all()).toHaveLength(1);
   });
 
   it('records a failed payment without creating a financial entry', () => {

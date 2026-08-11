@@ -65,7 +65,17 @@ describe('AppController (e2e)', () => {
         currency: 'ZAR',
         occurred_at: '2026-08-05T10:00:00Z',
       })
-      .expect(201);
+      .expect(200)
+      .expect((response) => {
+        const body = response.body as {
+          deliveryOutcome: string;
+          conflictingFields: string[];
+        };
+        expect(body).toMatchObject({
+          deliveryOutcome: 'accepted',
+          conflictingFields: [],
+        });
+      });
 
     const response = await request(app.getHttpServer())
       .get(`/schools/${schoolId}/payment-events`)
