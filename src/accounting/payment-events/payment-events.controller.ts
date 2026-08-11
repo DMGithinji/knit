@@ -11,6 +11,11 @@ export class PaymentEventsController {
     return this.paymentEvents.ingest(schoolId, payload);
   }
 
+  @Post('reconcile-pending')
+  reconcilePending(@Param('schoolId') schoolId: string) {
+    return this.paymentEvents.reconcilePending(schoolId);
+  }
+
   @Get(':eventId')
   findById(@Param('schoolId') schoolId: string, @Param('eventId') eventId: string) {
     return this.paymentEvents.findById(schoolId, eventId);

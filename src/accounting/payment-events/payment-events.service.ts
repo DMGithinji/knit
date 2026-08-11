@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { and, eq } from 'drizzle-orm';
+import { and, asc, eq, inArray } from 'drizzle-orm';
 import { DatabaseService } from '@/database/database.service';
 import {
   familyAccounts,
@@ -159,6 +159,56 @@ export class PaymentEventsService {
 
       return this.updateStatus(transaction, event.id, 'applied', null, true);
     });
+  }
+
+  reconcilePending(schoolId: string) {
+    this.schools.findById(schoolId);
+
+    const pending = this.database.db
+      .select({
+        id: paymentEvents.id,
+        providerEventId: paymentEvents.providerEventId,
+      })
+      .from(paymentEvents)
+      .where(
+        and(
+          eq(paymentEvents.schoolId, schoolId),
+          inArray(paymentEvents.processingStatus, ['received', 'unresolved']),
+        ),
+      )
+      .orderBy(asc(paymentEvents.occurredAt), asc(paymentEvents.id))
+      .all();
+
+    const outcomes = pending.map((pendingEvent) => {
+      try {
+        const event = this.reconcile(schoolId, pendingEvent.id);
+        return {
+          eventId: event.id,
+          providerEventId: event.providerEventId,
+          status: event.processingStatus,
+          reason: event.processingReason,
+        };
+      } catch (error: unknown) {
+        return {
+          eventId: pendingEvent.id,
+          providerEventId: pendingEvent.providerEventId,
+          status: 'error' as const,
+          reason: error instanceof Error ? error.message : 'unknown_reconciliation_error',
+        };
+      }
+    });
+
+    return {
+      attemptedCount: pending.length,
+      recoveredCount: outcomes.filter((outcome) =>
+        ['applied', 'recorded_no_effect', 'rejected'].includes(outcome.status),
+      ).length,
+      stillPendingCount: outcomes.filter((outcome) =>
+        ['received', 'unresolved'].includes(outcome.status),
+      ).length,
+      errorCount: outcomes.filter((outcome) => outcome.status === 'error').length,
+      outcomes,
+    };
   }
 
   resolveManually(schoolId: string, eventId: string, input: ManualPaymentEventResolutionDto) {

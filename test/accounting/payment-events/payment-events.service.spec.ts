@@ -180,6 +180,72 @@ describe('PaymentEventsService', () => {
     expect(testDatabase.database.db.select().from(ledgerEntries).all()).toHaveLength(1);
   });
 
+  it('re-drives every received or unresolved event after an interruption', () => {
+    const interruptedPayload: PaymentEventDto = {
+      ...baseEvent,
+      event_id: 'evt_interrupted',
+    };
+    const interrupted = testDatabase.database.db
+      .insert(paymentEvents)
+      .values({
+        schoolId,
+        providerEventId: interruptedPayload.event_id,
+        type: interruptedPayload.type,
+        familyReference: interruptedPayload.family_id,
+        invoiceReference: interruptedPayload.invoice_id,
+        amountCents: interruptedPayload.amount_cents,
+        currency: interruptedPayload.currency,
+        occurredAt: interruptedPayload.occurred_at,
+        rawPayload: interruptedPayload,
+      })
+      .returning()
+      .get();
+    const unresolved = service.ingest(schoolId, {
+      ...baseEvent,
+      event_id: 'evt_late_batch',
+      invoice_id: 'inv_late_batch',
+      occurred_at: '2026-08-01T09:15:22Z',
+    });
+    service.ingest(schoolId, {
+      ...baseEvent,
+      event_id: 'evt_already_applied',
+      occurred_at: '2026-08-01T09:16:22Z',
+    });
+
+    invoices.create(schoolId, familyAccountId, {
+      invoiceReference: 'inv_late_batch',
+      currency: 'ZAR',
+      issuedAt: '2026-08-01T00:00:00Z',
+      dueAt: '2026-08-31T00:00:00Z',
+      lineItems: [{ description: 'Late batch invoice', amountCents: 450000 }],
+    });
+
+    const result = service.reconcilePending(schoolId);
+
+    expect(result).toMatchObject({
+      attemptedCount: 2,
+      recoveredCount: 2,
+      stillPendingCount: 0,
+      errorCount: 0,
+    });
+    expect(result.outcomes).toEqual([
+      expect.objectContaining({
+        eventId: interrupted.id,
+        providerEventId: 'evt_interrupted',
+        status: 'applied',
+      }),
+      expect.objectContaining({
+        eventId: unresolved.event.id,
+        providerEventId: 'evt_late_batch',
+        status: 'applied',
+      }),
+    ]);
+    expect(testDatabase.database.db.select().from(ledgerEntries).all()).toHaveLength(3);
+
+    expect(service.reconcilePending(schoolId)).toMatchObject({ attemptedCount: 0 });
+    expect(testDatabase.database.db.select().from(ledgerEntries).all()).toHaveLength(3);
+  });
+
   it('creates a refund entry rather than changing the invoice', () => {
     const result = service.ingest(schoolId, {
       ...baseEvent,
