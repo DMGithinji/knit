@@ -95,3 +95,27 @@ export const ledgerEntries = sqliteTable(
     }).onDelete('restrict'),
   ],
 );
+
+export const paymentEventResolutions = sqliteTable(
+  'payment_event_resolutions',
+  {
+    id: text().primaryKey().$defaultFn(randomUUID),
+    schoolId: text().notNull(),
+    paymentEventId: text().notNull(),
+    decision: text({ enum: ['apply_verified_zar', 'record_no_effect'] }).notNull(),
+    verifiedAmountCents: integer(),
+    resolvedBy: text().notNull(),
+    resolutionReason: text().notNull(),
+    createdAt: text()
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
+  },
+  (table) => [
+    uniqueIndex('payment_event_resolutions_event_unique').on(table.paymentEventId),
+    foreignKey({
+      columns: [table.schoolId, table.paymentEventId],
+      foreignColumns: [paymentEvents.schoolId, paymentEvents.id],
+      name: 'payment_event_resolutions_event_school_fk',
+    }).onDelete('restrict'),
+  ],
+);
