@@ -41,7 +41,7 @@ describe('payment event fixture replay', () => {
 
     expect(replay.getBalanceSnapshots()).toEqual(firstBalances);
     expect(testDatabase.database.db.select().from(paymentEvents).all()).toHaveLength(10);
-    expect(testDatabase.database.db.select().from(ledgerEntries).all()).toHaveLength(6);
+    expect(testDatabase.database.db.select().from(ledgerEntries).all()).toHaveLength(7);
     expect(firstOutcomes).toEqual([
       { providerEventId: 'evt_001', status: 'applied', reason: null },
       { providerEventId: 'evt_002', status: 'applied', reason: null },
@@ -61,7 +61,7 @@ describe('payment event fixture replay', () => {
       },
       {
         providerEventId: 'evt_008',
-        status: 'unresolved',
+        status: 'applied_requires_review',
         reason: 'invoice_not_found',
       },
       { providerEventId: 'evt_009', status: 'rejected', reason: 'invalid_amount' },
@@ -129,14 +129,14 @@ describe('payment event fixture replay', () => {
       {
         familyReference: 'fam_104',
         totalInvoiced: 0,
-        totalPayments: 0,
+        totalPayments: 2000,
         totalRefunds: 0,
-        amountOwed: 0,
-        credit: 0,
+        amountOwed: -2000,
+        credit: 2000,
         attentionItems: [
           {
             providerEventId: 'evt_008',
-            status: 'unresolved',
+            status: 'applied_requires_review',
             reason: 'invoice_not_found',
           },
         ],
@@ -177,7 +177,7 @@ describe('payment event fixture replay', () => {
 
       expect(shuffledReplay.getBalanceSnapshots()).toEqual(orderedBalances);
       expect(shuffledDatabase.database.db.select().from(paymentEvents).all()).toHaveLength(10);
-      expect(shuffledDatabase.database.db.select().from(ledgerEntries).all()).toHaveLength(6);
+      expect(shuffledDatabase.database.db.select().from(ledgerEntries).all()).toHaveLength(7);
     } finally {
       shuffledDatabase.cleanup();
     }

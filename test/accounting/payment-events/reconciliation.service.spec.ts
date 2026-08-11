@@ -58,31 +58,21 @@ describe('PaymentReconciliationService', () => {
     expect(context.testDatabase.database.db.select().from(ledgerEntries).all()).toHaveLength(0);
   });
 
-  it('reconciles an event after its invoice arrives', () => {
-    const unresolved = context.paymentCapture.capture(context.schoolId, {
+  it('applies a payment to its family when the referenced invoice is absent', () => {
+    const result = context.paymentCapture.capture(context.schoolId, {
       ...baseEvent,
       event_id: 'evt_late',
       invoice_id: 'inv_late',
     });
 
-    expect(unresolved.event.familyAccountId).toBe(context.familyAccountId);
-    expect(unresolved.event.processingStatus).toBe('unresolved');
-
-    context.invoices.create(context.schoolId, context.familyAccountId, {
-      invoiceReference: 'inv_late',
-      currency: 'ZAR',
-      issuedAt: '2026-08-01T00:00:00Z',
-      dueAt: '2026-08-31T00:00:00Z',
-      lineItems: [{ description: 'Late invoice', amount: 4500 }],
+    expect(result.event).toMatchObject({
+      familyAccountId: context.familyAccountId,
+      processingStatus: 'applied_requires_review',
+      processingReason: 'invoice_not_found',
     });
-
-    context.paymentReconciliation.reconcile(context.schoolId, unresolved.event.id);
-    context.paymentReconciliation.reconcile(context.schoolId, unresolved.event.id);
-
-    expect(
-      context.paymentQueries.findById(context.schoolId, unresolved.event.id).processingStatus,
-    ).toBe('applied');
-    expect(context.testDatabase.database.db.select().from(ledgerEntries).all()).toHaveLength(1);
+    expect(context.testDatabase.database.db.select().from(ledgerEntries).all()).toEqual([
+      expect.objectContaining({ invoiceId: null, paymentEventId: result.event.id }),
+    ]);
   });
 
   it('re-drives every received or recoverable unresolved event after an interruption', () => {
@@ -105,12 +95,6 @@ describe('PaymentReconciliationService', () => {
       })
       .returning()
       .get();
-    const unresolved = context.paymentCapture.capture(context.schoolId, {
-      ...baseEvent,
-      event_id: 'evt_late_batch',
-      invoice_id: 'inv_late_batch',
-      occurred_at: '2026-08-01T09:15:22Z',
-    });
     context.paymentCapture.capture(context.schoolId, {
       ...baseEvent,
       event_id: 'evt_already_applied',
@@ -123,19 +107,11 @@ describe('PaymentReconciliationService', () => {
       occurred_at: '2026-08-01T09:17:22Z',
     });
 
-    context.invoices.create(context.schoolId, context.familyAccountId, {
-      invoiceReference: 'inv_late_batch',
-      currency: 'ZAR',
-      issuedAt: '2026-08-01T00:00:00Z',
-      dueAt: '2026-08-31T00:00:00Z',
-      lineItems: [{ description: 'Late batch invoice', amount: 4500 }],
-    });
-
     const result = context.paymentReconciliation.reconcilePending(context.schoolId);
 
     expect(result).toMatchObject({
-      attemptedCount: 2,
-      recoveredCount: 2,
+      attemptedCount: 1,
+      recoveredCount: 1,
       stillPendingCount: 0,
       errorCount: 0,
     });
@@ -145,13 +121,8 @@ describe('PaymentReconciliationService', () => {
         providerEventId: 'evt_interrupted',
         status: 'applied',
       }),
-      expect.objectContaining({
-        eventId: unresolved.event.id,
-        providerEventId: 'evt_late_batch',
-        status: 'applied',
-      }),
     ]);
-    expect(context.testDatabase.database.db.select().from(ledgerEntries).all()).toHaveLength(3);
+    expect(context.testDatabase.database.db.select().from(ledgerEntries).all()).toHaveLength(2);
     expect(
       context.paymentQueries.findById(context.schoolId, needsHumanReview.event.id),
     ).toMatchObject({

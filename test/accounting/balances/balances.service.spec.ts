@@ -197,6 +197,47 @@ describe('BalancesService', () => {
     });
   });
 
+  it('includes a family-level payment when its provider invoice reference is absent', () => {
+    const school = schools.create({ name: 'Knit Academy' });
+    const family = families.create(school.id, {
+      accountReference: 'fam_family_payment',
+      displayName: 'Family-level payment',
+    });
+
+    paymentCapture.capture(school.id, {
+      event_id: 'evt_family_payment',
+      type: 'payment.succeeded',
+      family_id: 'fam_family_payment',
+      invoice_id: 'inv_missing',
+      amount_cents: 200000,
+      currency: 'ZAR',
+      occurred_at: '2026-08-01T09:14:22Z',
+    });
+
+    const balance = balances.getFamilyBalance(school.id, family.id);
+
+    expect(balance.summary).toMatchObject({
+      totalPayments: 2000,
+      amountOwed: -2000,
+      credit: 2000,
+    });
+    expect(balance.lines).toEqual([
+      expect.objectContaining({
+        kind: 'payment',
+        invoiceReference: null,
+        amount: -2000,
+        balanceAfter: -2000,
+      }),
+    ]);
+    expect(balance.attentionItems).toEqual([
+      expect.objectContaining({
+        providerEventId: 'evt_family_payment',
+        status: 'applied_requires_review',
+        reason: 'invoice_not_found',
+      }),
+    ]);
+  });
+
   it('shows similar applied payments as attention without removing either payment', () => {
     const school = schools.create({ name: 'Knit Academy' });
     const family = families.create(school.id, {

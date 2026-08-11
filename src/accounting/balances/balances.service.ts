@@ -33,7 +33,7 @@ interface StatementSeed {
   sortId: string;
   balanceChangeCents: number;
   description: string;
-  invoiceReference: string;
+  invoiceReference: string | null;
   providerEventId?: string;
   source?: StatementSource;
 }
@@ -102,7 +102,7 @@ export class BalancesService {
       resolutions.map((resolution) => [resolution.paymentEventId, resolution]),
     );
     const lineItemsByInvoiceId = groupBy(lineItems, (lineItem) => lineItem.invoiceId);
-    const entriesByInvoiceId = groupBy(entries, (entry) => entry.invoiceId);
+    const entriesByInvoiceId = groupBy(entries, (entry) => entry.invoiceId ?? 'family-level');
 
     // The breakdown and the statement must agree, so this is computed in one place only.
     const invoicedCentsByInvoiceId = new Map(
@@ -165,7 +165,9 @@ export class BalancesService {
           // A payment reduces what is owed; a refund adds it back.
           balanceChangeCents: entry.kind === 'payment' ? -entry.amountCents : entry.amountCents,
           description: entry.kind === 'payment' ? 'Payment received' : 'Payment refunded',
-          invoiceReference: invoiceById.get(entry.invoiceId)?.invoiceReference ?? entry.invoiceId,
+          invoiceReference: entry.invoiceId
+            ? (invoiceById.get(entry.invoiceId)?.invoiceReference ?? entry.invoiceId)
+            : null,
           providerEventId: event?.providerEventId,
           source: event && this.describeSource(event, resolutionByEventId.get(event.id)),
         };

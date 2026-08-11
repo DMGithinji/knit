@@ -4,6 +4,8 @@ import { BetterSQLite3Database, drizzle } from 'drizzle-orm/better-sqlite3';
 import * as schema from './schema';
 
 export type KnitDatabase = BetterSQLite3Database<typeof schema>;
+/** The handle passed to a `db.transaction(...)` callback. */
+export type KnitTransaction = Parameters<Parameters<KnitDatabase['transaction']>[0]>[0];
 export const DATABASE_PATH = Symbol('DATABASE_PATH');
 
 @Injectable()

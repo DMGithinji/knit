@@ -80,7 +80,8 @@ export const ledgerEntries = sqliteTable(
     id: text().primaryKey().$defaultFn(randomUUID),
     schoolId: text().notNull(),
     familyAccountId: text().notNull(),
-    invoiceId: text().notNull(),
+    // Family-level payments are valid even when the provider's invoice reference is absent or wrong.
+    invoiceId: text(),
     paymentEventId: text().notNull(),
     kind: text({ enum: ['payment', 'refund'] }).notNull(),
     amountCents: integer().notNull(),

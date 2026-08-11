@@ -78,18 +78,12 @@ export class PaymentReviewService {
           )
           .get();
 
-        if (!invoice) {
-          throw new BadRequestException(
-            'The referenced invoice must exist before applying payment',
-          );
-        }
-
         transaction
           .insert(ledgerEntries)
           .values({
             schoolId,
             familyAccountId: family.id,
-            invoiceId: invoice.id,
+            invoiceId: invoice?.id,
             paymentEventId: event.id,
             kind: event.type === 'payment.refunded' ? 'refund' : 'payment',
             amountCents: verifiedAmountCents,
