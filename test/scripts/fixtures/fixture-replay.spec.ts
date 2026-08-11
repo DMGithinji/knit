@@ -2,6 +2,19 @@ import { ledgerEntries, paymentEvents } from '@/database/schema';
 import { FixtureReplay, loadPaymentEventFixture } from '@scripts/fixtures/fixture-replay';
 import { createTestDatabase, TestDatabase } from '@test/helpers/test-database';
 
+function deterministicallyShuffle<T>(values: T[]): T[] {
+  const shuffled = [...values];
+  let state = 20260801;
+
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    state = (state * 1664525 + 1013904223) >>> 0;
+    const replacementIndex = state % (index + 1);
+    [shuffled[index], shuffled[replacementIndex]] = [shuffled[replacementIndex], shuffled[index]];
+  }
+
+  return shuffled;
+}
+
 describe('payment event fixture replay', () => {
   let testDatabase: TestDatabase;
   let replay: FixtureReplay;
@@ -128,5 +141,29 @@ describe('payment event fixture replay', () => {
         ],
       },
     ]);
+  });
+
+  it('produces the same balances when deliveries arrive in shuffled order', () => {
+    const events = loadPaymentEventFixture();
+    replay.replay(events);
+    const orderedBalances = replay.getBalanceSnapshots();
+    const shuffledEvents = deterministicallyShuffle(events);
+
+    expect(shuffledEvents.map((event) => event.event_id)).not.toEqual(
+      events.map((event) => event.event_id),
+    );
+
+    const shuffledDatabase = createTestDatabase();
+    try {
+      const shuffledReplay = new FixtureReplay(shuffledDatabase.database);
+      shuffledReplay.seed();
+      shuffledReplay.replay(shuffledEvents);
+
+      expect(shuffledReplay.getBalanceSnapshots()).toEqual(orderedBalances);
+      expect(shuffledDatabase.database.db.select().from(paymentEvents).all()).toHaveLength(10);
+      expect(shuffledDatabase.database.db.select().from(ledgerEntries).all()).toHaveLength(6);
+    } finally {
+      shuffledDatabase.cleanup();
+    }
   });
 });
