@@ -70,20 +70,20 @@ describe('payment event fixture replay', () => {
     expect(firstBalances).toEqual([
       {
         familyReference: 'fam_100',
-        totalInvoicedCents: 450000,
-        totalPaymentsCents: 450000,
-        totalRefundsCents: 450000,
-        amountOwedCents: 450000,
-        creditCents: 0,
+        totalInvoiced: 4500,
+        totalPayments: 4500,
+        totalRefunds: 4500,
+        amountOwed: 4500,
+        credit: 0,
         attentionItems: [],
       },
       {
         familyReference: 'fam_101',
-        totalInvoicedCents: 300000,
-        totalPaymentsCents: 150000,
-        totalRefundsCents: 0,
-        amountOwedCents: 150000,
-        creditCents: 0,
+        totalInvoiced: 3000,
+        totalPayments: 1500,
+        totalRefunds: 0,
+        amountOwed: 1500,
+        credit: 0,
         attentionItems: [
           {
             providerEventId: 'evt_010',
@@ -94,11 +94,11 @@ describe('payment event fixture replay', () => {
       },
       {
         familyReference: 'fam_102',
-        totalInvoicedCents: 300000,
-        totalPaymentsCents: 300000,
-        totalRefundsCents: 0,
-        amountOwedCents: 0,
-        creditCents: 0,
+        totalInvoiced: 3000,
+        totalPayments: 3000,
+        totalRefunds: 0,
+        amountOwed: 0,
+        credit: 0,
         attentionItems: [
           {
             providerEventId: 'evt_003',
@@ -109,20 +109,20 @@ describe('payment event fixture replay', () => {
       },
       {
         familyReference: 'fam_103',
-        totalInvoicedCents: 75000,
-        totalPaymentsCents: 150000,
-        totalRefundsCents: 0,
-        amountOwedCents: -75000,
-        creditCents: 75000,
+        totalInvoiced: 750,
+        totalPayments: 1500,
+        totalRefunds: 0,
+        amountOwed: -750,
+        credit: 750,
         attentionItems: [],
       },
       {
         familyReference: 'fam_104',
-        totalInvoicedCents: 0,
-        totalPaymentsCents: 0,
-        totalRefundsCents: 0,
-        amountOwedCents: 0,
-        creditCents: 0,
+        totalInvoiced: 0,
+        totalPayments: 0,
+        totalRefunds: 0,
+        amountOwed: 0,
+        credit: 0,
         attentionItems: [
           {
             providerEventId: 'evt_008',
@@ -133,11 +133,11 @@ describe('payment event fixture replay', () => {
       },
       {
         familyReference: 'fam_105',
-        totalInvoicedCents: 50000,
-        totalPaymentsCents: 0,
-        totalRefundsCents: 0,
-        amountOwedCents: 50000,
-        creditCents: 0,
+        totalInvoiced: 500,
+        totalPayments: 0,
+        totalRefunds: 0,
+        amountOwed: 500,
+        credit: 0,
         attentionItems: [
           {
             providerEventId: 'evt_009',

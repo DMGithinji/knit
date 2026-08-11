@@ -22,11 +22,11 @@ try {
   console.table(
     replay.getBalanceSnapshots().map((balance) => ({
       family: balance.familyReference,
-      invoicedCents: balance.totalInvoicedCents,
-      paymentsCents: balance.totalPaymentsCents,
-      refundsCents: balance.totalRefundsCents,
-      amountOwedCents: balance.amountOwedCents,
-      creditCents: balance.creditCents,
+      invoiced: balance.totalInvoiced,
+      payments: balance.totalPayments,
+      refunds: balance.totalRefunds,
+      amountOwed: balance.amountOwed,
+      credit: balance.credit,
       attention: balance.attentionItems
         .map((item) => `${item.providerEventId}: ${item.status} (${item.reason ?? 'no reason'})`)
         .join('; '),

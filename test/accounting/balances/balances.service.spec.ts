@@ -88,40 +88,66 @@ describe('BalancesService', () => {
     const balance = balances.getFamilyBalance(school.id, family.id);
 
     expect(balance.summary).toEqual({
-      totalInvoicedCents: 450000,
-      totalPaymentsCents: 450000,
-      totalRefundsCents: 100000,
-      amountOwedCents: 100000,
-      creditCents: 0,
+      totalInvoiced: 4500,
+      totalPayments: 4500,
+      totalRefunds: 1000,
+      amountOwed: 1000,
+      credit: 0,
       formula: 'total invoices - successful payments + refunds',
     });
     expect(balance.invoices[0]).toMatchObject({
       invoiceReference: 'inv_100',
-      invoicedCents: 450000,
-      paidCents: 450000,
-      refundedCents: 100000,
-      amountOwedCents: 100000,
+      invoiced: 4500,
+      paid: 4500,
+      refunded: 1000,
+      amountOwed: 1000,
+      credit: 0,
     });
     expect(balance.invoices[0]?.lineItems[0]?.student).toMatchObject({
       id: student.id,
       name: 'Anele Ndlovu',
     });
-    expect(balance.financialEntries.map((entry) => entry.effectOnAmountOwedCents)).toEqual([
-      -450000, 100000,
+    expect(balance.lines).toEqual([
+      expect.objectContaining({
+        at: '2026-08-01T00:00:00Z',
+        kind: 'invoice',
+        amount: 4500,
+        balanceAfter: 4500,
+        invoiceReference: 'inv_100',
+      }),
+      expect.objectContaining({
+        at: '2026-08-01T09:14:22Z',
+        kind: 'payment',
+        amount: -4500,
+        balanceAfter: 0,
+        invoiceReference: 'inv_100',
+        providerEventId: 'evt_payment',
+      }),
+      expect.objectContaining({
+        at: '2026-08-01T14:02:55Z',
+        kind: 'refund',
+        amount: 1000,
+        balanceAfter: 1000,
+        invoiceReference: 'inv_100',
+        providerEventId: 'evt_refund',
+      }),
     ]);
+    expect(balance).not.toHaveProperty('financialEntries');
+    expect(balance.invoices[0]).not.toHaveProperty('financialEntries');
     expect(balance.attentionItems).toEqual([
       expect.objectContaining({
         providerEventId: 'evt_failed',
         status: 'recorded_no_effect',
-        balanceEffectCents: 0,
+        amount: 4500,
       }),
       expect.objectContaining({
         providerEventId: 'evt_usd',
         status: 'unresolved',
         reason: 'unsupported_currency_requires_review',
-        balanceEffectCents: 0,
+        amount: 500,
       }),
     ]);
+    expect(balance.attentionItems[0]).not.toHaveProperty('balanceEffectCents');
   });
 
   it('shows a negative amount owed as family credit', () => {
@@ -148,8 +174,12 @@ describe('BalancesService', () => {
     });
 
     expect(balances.getFamilyBalance(school.id, family.id).summary).toMatchObject({
-      amountOwedCents: -50000,
-      creditCents: 50000,
+      amountOwed: -500,
+      credit: 500,
+    });
+    expect(balances.getFamilyBalance(school.id, family.id).lines.at(-1)).toMatchObject({
+      amount: -1500,
+      balanceAfter: -500,
     });
   });
 });

@@ -35,11 +35,11 @@ export interface FixtureEventOutcome {
 
 export interface FixtureBalanceSnapshot {
   familyReference: string;
-  totalInvoicedCents: number;
-  totalPaymentsCents: number;
-  totalRefundsCents: number;
-  amountOwedCents: number;
-  creditCents: number;
+  totalInvoiced: number;
+  totalPayments: number;
+  totalRefunds: number;
+  amountOwed: number;
+  credit: number;
   attentionItems: Array<{
     providerEventId: string;
     status: string;
@@ -147,11 +147,11 @@ export class FixtureReplay {
 
       return {
         familyReference: accountReference,
-        totalInvoicedCents: balance.summary.totalInvoicedCents,
-        totalPaymentsCents: balance.summary.totalPaymentsCents,
-        totalRefundsCents: balance.summary.totalRefundsCents,
-        amountOwedCents: balance.summary.amountOwedCents,
-        creditCents: balance.summary.creditCents,
+        totalInvoiced: balance.summary.totalInvoiced,
+        totalPayments: balance.summary.totalPayments,
+        totalRefunds: balance.summary.totalRefunds,
+        amountOwed: balance.summary.amountOwed,
+        credit: balance.summary.credit,
         attentionItems: balance.attentionItems.map((item) => ({
           providerEventId: item.providerEventId,
           status: item.status,
