@@ -28,6 +28,7 @@ export const familyAccounts = sqliteTable(
       table.schoolId,
       table.accountReference,
     ),
+    uniqueIndex('family_accounts_school_id_id_unique').on(table.schoolId, table.id),
   ],
 );
 
