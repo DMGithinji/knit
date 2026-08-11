@@ -1,0 +1,102 @@
+[
+  {
+    "event_id": "evt_001",
+    "type": "payment.succeeded",
+    "family_id": "fam_100",
+    "invoice_id": "inv_100",
+    "amount_cents": 450000,
+    "currency": "ZAR",
+    "occurred_at": "2026-08-01T09:14:22Z"
+  },
+  {
+    "event_id": "evt_002",
+    "type": "payment.succeeded",
+    "family_id": "fam_101",
+    "invoice_id": "inv_101",
+    "amount_cents": 150000,
+    "currency": "ZAR",
+    "occurred_at": "2026-08-01T09:15:03Z"
+  },
+  {
+    "event_id": "evt_002",
+    "type": "payment.succeeded",
+    "family_id": "fam_101",
+    "invoice_id": "inv_101",
+    "amount_cents": 150000,
+    "currency": "ZAR",
+    "occurred_at": "2026-08-01T09:15:03Z"
+  },
+  {
+    "event_id": "evt_003",
+    "type": "payment.failed",
+    "family_id": "fam_102",
+    "invoice_id": "inv_102",
+    "amount_cents": 300000,
+    "currency": "ZAR",
+    "occurred_at": "2026-08-01T09:16:41Z",
+    "reason": "insufficient_funds"
+  },
+  {
+    "event_id": "evt_004",
+    "type": "payment.succeeded",
+    "family_id": "fam_102",
+    "invoice_id": "inv_102",
+    "amount_cents": 300000,
+    "currency": "ZAR",
+    "occurred_at": "2026-08-01T09:31:12Z"
+  },
+  {
+    "event_id": "evt_005",
+    "type": "payment.refunded",
+    "family_id": "fam_100",
+    "invoice_id": "inv_100",
+    "amount_cents": 450000,
+    "currency": "ZAR",
+    "occurred_at": "2026-08-01T14:02:55Z"
+  },
+  {
+    "event_id": "evt_006",
+    "type": "payment.succeeded",
+    "family_id": "fam_103",
+    "invoice_id": "inv_103",
+    "amount_cents": 75000,
+    "currency": "ZAR",
+    "occurred_at": "2026-08-01T10:44:10Z"
+  },
+  {
+    "event_id": "evt_007",
+    "type": "payment.succeeded",
+    "family_id": "fam_103",
+    "invoice_id": "inv_103",
+    "amount_cents": 75000,
+    "currency": "ZAR",
+    "occurred_at": "2026-08-01T10:44:11Z"
+  },
+  {
+    "event_id": "evt_008",
+    "type": "payment.succeeded",
+    "family_id": "fam_104",
+    "invoice_id": "inv_999",
+    "amount_cents": 200000,
+    "currency": "ZAR",
+    "occurred_at": "2026-08-01T11:03:00Z"
+  },
+  {
+    "event_id": "evt_009",
+    "type": "payment.succeeded",
+    "family_id": "fam_105",
+    "invoice_id": "inv_105",
+    "amount_cents": -50000,
+    "currency": "ZAR",
+    "occurred_at": "2026-08-01T11:20:00Z"
+  },
+  {
+    "event_id": "evt_010",
+    "type": "payment.succeeded",
+    "family_id": "fam_101",
+    "invoice_id": "inv_101",
+    "amount_cents": 150000,
+    "currency": "USD",
+    "occurred_at": "2026-08-01T12:00:00Z"
+  }
+]
