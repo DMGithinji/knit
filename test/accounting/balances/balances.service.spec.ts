@@ -42,8 +42,8 @@ describe('BalancesService', () => {
       issuedAt: '2026-08-01T00:00:00Z',
       dueAt: '2026-08-31T00:00:00Z',
       lineItems: [
-        { studentId: student.id, description: 'Tuition', amountCents: 400000 },
-        { description: 'Family administration fee', amountCents: 50000 },
+        { studentId: student.id, description: 'Tuition', amount: 4000 },
+        { description: 'Family administration fee', amount: 500 },
       ],
     });
 
@@ -135,7 +135,7 @@ describe('BalancesService', () => {
       currency: 'ZAR',
       issuedAt: '2026-08-01T00:00:00Z',
       dueAt: '2026-08-31T00:00:00Z',
-      lineItems: [{ description: 'Fees', amountCents: 100000 }],
+      lineItems: [{ description: 'Fees', amount: 1000 }],
     });
     paymentEvents.ingest(school.id, {
       event_id: 'evt_credit',

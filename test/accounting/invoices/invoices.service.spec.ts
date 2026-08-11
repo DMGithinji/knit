@@ -38,15 +38,15 @@ describe('InvoicesService', () => {
       issuedAt: '2026-08-01T00:00:00Z',
       dueAt: '2026-08-31T00:00:00Z',
       lineItems: [
-        { studentId: student.id, description: 'Tuition', amountCents: 400000 },
-        { description: 'Family administration fee', amountCents: 50000 },
+        { studentId: student.id, description: 'Tuition', amount: 4000 },
+        { description: 'Family administration fee', amount: 500 },
       ],
     });
 
-    expect(invoice.totalCents).toBe(450000);
+    expect(invoice.total).toBe(4500);
     expect(invoice.lineItems).toEqual([
-      expect.objectContaining({ studentId: student.id, amountCents: 400000 }),
-      expect.objectContaining({ studentId: null, amountCents: 50000 }),
+      expect.objectContaining({ studentId: student.id, amount: 4000 }),
+      expect.objectContaining({ studentId: null, amount: 500 }),
     ]);
   });
 
@@ -71,7 +71,7 @@ describe('InvoicesService', () => {
         currency: 'ZAR',
         issuedAt: '2026-08-01T00:00:00Z',
         dueAt: '2026-08-31T00:00:00Z',
-        lineItems: [{ studentId: otherStudent.id, description: 'Tuition', amountCents: 450000 }],
+        lineItems: [{ studentId: otherStudent.id, description: 'Tuition', amount: 4500 }],
       }),
     ).toThrow();
 

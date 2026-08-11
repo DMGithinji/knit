@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { and, eq } from 'drizzle-orm';
+import { centsToRand, randToCents } from '@/common/money/zar';
 import { DatabaseService } from '@/database/database.service';
 import { invoiceLineItems, invoices } from '@/database/schema';
 import { FamilyAccountsService } from '../family-accounts/family-accounts.service';
@@ -36,7 +37,7 @@ export class InvoicesService {
             invoiceId: invoice.id,
             studentId: lineItem.studentId,
             description: lineItem.description,
-            amountCents: lineItem.amountCents,
+            amountCents: randToCents(lineItem.amount),
           })),
         )
         .run();
@@ -66,10 +67,15 @@ export class InvoicesService {
       .where(eq(invoiceLineItems.invoiceId, invoice.id))
       .all();
 
+    const publicLineItems = lineItems.map(({ amountCents, ...lineItem }) => ({
+      ...lineItem,
+      amount: centsToRand(amountCents),
+    }));
+
     return {
       ...invoice,
-      totalCents: lineItems.reduce((total, lineItem) => total + lineItem.amountCents, 0),
-      lineItems,
+      total: centsToRand(lineItems.reduce((total, lineItem) => total + lineItem.amountCents, 0)),
+      lineItems: publicLineItems,
     };
   }
 

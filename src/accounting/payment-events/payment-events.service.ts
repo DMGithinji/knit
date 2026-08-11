@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { and, asc, eq, inArray, or } from 'drizzle-orm';
+import { centsToRand, randToCents } from '@/common/money/zar';
 import { DatabaseService } from '@/database/database.service';
 import {
   familyAccounts,
@@ -64,13 +65,11 @@ export class PaymentEventsService {
 
     this.reconcile(schoolId, eventId);
 
-    return {
-      event: this.findById(schoolId, eventId),
-    };
+    return { event: this.findById(schoolId, eventId) };
   }
 
   reconcile(schoolId: string, eventId: string) {
-    return this.database.db.transaction((transaction) => {
+    const reconciled = this.database.db.transaction((transaction) => {
       const event = transaction
         .select()
         .from(paymentEvents)
@@ -159,6 +158,8 @@ export class PaymentEventsService {
 
       return this.updateStatus(transaction, event.id, 'applied', null, true);
     });
+
+    return this.toPublicEvent(reconciled);
   }
 
   reconcilePending(schoolId: string) {
@@ -234,9 +235,10 @@ export class PaymentEventsService {
       }
 
       if (input.decision === 'apply_verified_zar') {
-        if (!input.verifiedAmountCents) {
+        if (input.verifiedAmount === undefined) {
           throw new BadRequestException('A verified ZAR amount is required');
         }
+        const verifiedAmountCents = randToCents(input.verifiedAmount);
 
         const family = transaction
           .select()
@@ -278,7 +280,7 @@ export class PaymentEventsService {
             invoiceId: invoice.id,
             paymentEventId: event.id,
             kind: event.type === 'payment.refunded' ? 'refund' : 'payment',
-            amountCents: input.verifiedAmountCents,
+            amountCents: verifiedAmountCents,
             currency: 'ZAR',
             occurredAt: event.occurredAt,
           })
@@ -291,14 +293,15 @@ export class PaymentEventsService {
           schoolId,
           paymentEventId: event.id,
           decision: input.decision,
-          verifiedAmountCents: input.verifiedAmountCents,
+          verifiedAmountCents:
+            input.verifiedAmount === undefined ? undefined : randToCents(input.verifiedAmount),
           resolvedBy: input.resolvedBy,
           resolutionReason: input.resolutionReason,
         })
         .run();
 
       const now = new Date().toISOString();
-      return transaction
+      const resolved = transaction
         .update(paymentEvents)
         .set({
           processingStatus:
@@ -313,6 +316,8 @@ export class PaymentEventsService {
         .where(eq(paymentEvents.id, event.id))
         .returning()
         .get();
+
+      return this.toPublicEvent(resolved);
     });
   }
 
@@ -327,7 +332,7 @@ export class PaymentEventsService {
       throw new NotFoundException(`Payment event ${eventId} was not found`);
     }
 
-    return event;
+    return this.toPublicEvent(event);
   }
 
   private updateStatus(
@@ -349,5 +354,13 @@ export class PaymentEventsService {
       .where(eq(paymentEvents.id, eventId))
       .returning()
       .get();
+  }
+
+  private toPublicEvent<T extends { amountCents: number }>(event: T) {
+    const { amountCents, ...details } = event;
+    return {
+      ...details,
+      amount: centsToRand(amountCents),
+    };
   }
 }

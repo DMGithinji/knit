@@ -20,11 +20,11 @@ const FIXTURE_FAMILIES = [
 ] as const;
 
 const FIXTURE_INVOICES = [
-  { familyReference: 'fam_100', invoiceReference: 'inv_100', amountCents: 450000 },
-  { familyReference: 'fam_101', invoiceReference: 'inv_101', amountCents: 300000 },
-  { familyReference: 'fam_102', invoiceReference: 'inv_102', amountCents: 300000 },
-  { familyReference: 'fam_103', invoiceReference: 'inv_103', amountCents: 75000 },
-  { familyReference: 'fam_105', invoiceReference: 'inv_105', amountCents: 50000 },
+  { familyReference: 'fam_100', invoiceReference: 'inv_100', amount: 4500 },
+  { familyReference: 'fam_101', invoiceReference: 'inv_101', amount: 3000 },
+  { familyReference: 'fam_102', invoiceReference: 'inv_102', amount: 3000 },
+  { familyReference: 'fam_103', invoiceReference: 'inv_103', amount: 750 },
+  { familyReference: 'fam_105', invoiceReference: 'inv_105', amount: 500 },
 ] as const;
 
 export interface FixtureEventOutcome {
@@ -117,7 +117,7 @@ export class FixtureReplay {
         currency: 'ZAR',
         issuedAt: '2026-08-01T00:00:00Z',
         dueAt: '2026-08-31T23:59:59Z',
-        lineItems: [{ description: 'Fixture school fees', amountCents: input.amountCents }],
+        lineItems: [{ description: 'Fixture school fees', amount: input.amount }],
       });
     }
 

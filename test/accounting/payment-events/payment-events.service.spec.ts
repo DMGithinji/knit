@@ -43,7 +43,7 @@ describe('PaymentEventsService', () => {
       currency: 'ZAR',
       issuedAt: '2026-08-01T00:00:00Z',
       dueAt: '2026-08-31T00:00:00Z',
-      lineItems: [{ description: 'Term fees', amountCents: 450000 }],
+      lineItems: [{ description: 'Term fees', amount: 4500 }],
     });
   });
 
@@ -114,7 +114,7 @@ describe('PaymentEventsService', () => {
 
     const resolved = service.resolveManually(schoolId, unresolved.event.id, {
       decision: 'apply_verified_zar',
-      verifiedAmountCents: 275000,
+      verifiedAmount: 2750,
       resolvedBy: 'bursar@knit.test',
       resolutionReason: 'Provider confirmed a ZAR 2,750 settlement',
     });
@@ -122,7 +122,7 @@ describe('PaymentEventsService', () => {
     expect(resolved.processingStatus).toBe('applied');
     expect(service.findById(schoolId, unresolved.event.id)).toMatchObject({
       currency: 'USD',
-      amountCents: 150000,
+      amount: 1500,
       processingReason: 'manually_verified_zar_settlement',
     });
     expect(testDatabase.database.db.select().from(ledgerEntries).all()).toEqual([
@@ -170,7 +170,7 @@ describe('PaymentEventsService', () => {
       currency: 'ZAR',
       issuedAt: '2026-08-01T00:00:00Z',
       dueAt: '2026-08-31T00:00:00Z',
-      lineItems: [{ description: 'Late invoice', amountCents: 450000 }],
+      lineItems: [{ description: 'Late invoice', amount: 4500 }],
     });
 
     service.reconcile(schoolId, unresolved.event.id);
@@ -223,7 +223,7 @@ describe('PaymentEventsService', () => {
       currency: 'ZAR',
       issuedAt: '2026-08-01T00:00:00Z',
       dueAt: '2026-08-31T00:00:00Z',
-      lineItems: [{ description: 'Late batch invoice', amountCents: 450000 }],
+      lineItems: [{ description: 'Late batch invoice', amount: 4500 }],
     });
 
     const result = service.reconcilePending(schoolId);

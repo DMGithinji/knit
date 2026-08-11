@@ -3,6 +3,7 @@ import {
   IsInt,
   IsISO8601,
   IsNotEmpty,
+  IsNumber,
   IsOptional,
   IsString,
   Min,
@@ -45,9 +46,9 @@ export class ManualPaymentEventResolutionDto {
   decision!: 'apply_verified_zar' | 'record_no_effect';
 
   @ValidateIf((input: ManualPaymentEventResolutionDto) => input.decision === 'apply_verified_zar')
-  @IsInt()
-  @Min(1)
-  verifiedAmountCents?: number;
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0.01)
+  verifiedAmount?: number;
 
   @IsString()
   @IsNotEmpty()

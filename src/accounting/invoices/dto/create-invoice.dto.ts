@@ -3,9 +3,9 @@ import {
   ArrayNotEmpty,
   IsArray,
   IsIn,
-  IsInt,
   IsISO8601,
   IsNotEmpty,
+  IsNumber,
   IsOptional,
   IsString,
   Min,
@@ -21,9 +21,9 @@ export class CreateInvoiceLineItemDto {
   @IsNotEmpty()
   description!: string;
 
-  @IsInt()
-  @Min(1)
-  amountCents!: number;
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0.01)
+  amount!: number;
 }
 
 export class CreateInvoiceDto {
