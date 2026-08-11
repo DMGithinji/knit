@@ -1,9 +1,20 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { and, eq } from 'drizzle-orm';
 import { DatabaseService } from '@/database/database.service';
-import { familyAccounts, invoices, ledgerEntries, paymentEvents } from '@/database/schema';
+import {
+  familyAccounts,
+  invoices,
+  ledgerEntries,
+  paymentEventResolutions,
+  paymentEvents,
+} from '@/database/schema';
 import { SchoolProfileService } from '@/schools/profile/school-profile.service';
-import { PaymentEventDto } from './dto/payment-event.dto';
+import { ManualPaymentEventResolutionDto, PaymentEventDto } from './dto/payment-event.dto';
 
 @Injectable()
 export class PaymentEventsService {
@@ -147,6 +158,105 @@ export class PaymentEventsService {
         .run();
 
       return this.updateStatus(transaction, event.id, 'applied', null, true);
+    });
+  }
+
+  resolveManually(schoolId: string, eventId: string, input: ManualPaymentEventResolutionDto) {
+    return this.database.db.transaction((transaction) => {
+      const event = transaction
+        .select()
+        .from(paymentEvents)
+        .where(and(eq(paymentEvents.schoolId, schoolId), eq(paymentEvents.id, eventId)))
+        .get();
+
+      if (!event) {
+        throw new NotFoundException(`Payment event ${eventId} was not found`);
+      }
+
+      if (event.processingStatus !== 'unresolved') {
+        throw new ConflictException('Only unresolved payment events can be reviewed manually');
+      }
+
+      if (input.decision === 'apply_verified_zar') {
+        if (!input.verifiedAmountCents) {
+          throw new BadRequestException('A verified ZAR amount is required');
+        }
+
+        const family = transaction
+          .select()
+          .from(familyAccounts)
+          .where(
+            and(
+              eq(familyAccounts.schoolId, schoolId),
+              eq(familyAccounts.accountReference, event.familyReference),
+            ),
+          )
+          .get();
+
+        if (!family) {
+          throw new BadRequestException('The referenced family must exist before applying payment');
+        }
+
+        const invoice = transaction
+          .select()
+          .from(invoices)
+          .where(
+            and(
+              eq(invoices.familyAccountId, family.id),
+              eq(invoices.invoiceReference, event.invoiceReference),
+            ),
+          )
+          .get();
+
+        if (!invoice) {
+          throw new BadRequestException(
+            'The referenced invoice must exist before applying payment',
+          );
+        }
+
+        transaction
+          .insert(ledgerEntries)
+          .values({
+            schoolId,
+            familyAccountId: family.id,
+            invoiceId: invoice.id,
+            paymentEventId: event.id,
+            kind: event.type === 'payment.refunded' ? 'refund' : 'payment',
+            amountCents: input.verifiedAmountCents,
+            currency: 'ZAR',
+            occurredAt: event.occurredAt,
+          })
+          .run();
+      }
+
+      transaction
+        .insert(paymentEventResolutions)
+        .values({
+          schoolId,
+          paymentEventId: event.id,
+          decision: input.decision,
+          verifiedAmountCents: input.verifiedAmountCents,
+          resolvedBy: input.resolvedBy,
+          resolutionReason: input.resolutionReason,
+        })
+        .run();
+
+      const now = new Date().toISOString();
+      return transaction
+        .update(paymentEvents)
+        .set({
+          processingStatus:
+            input.decision === 'apply_verified_zar' ? 'applied' : 'recorded_no_effect',
+          processingReason:
+            input.decision === 'apply_verified_zar'
+              ? 'manually_verified_zar_settlement'
+              : 'manual_review_no_financial_effect',
+          resolvedAt: now,
+          updatedAt: now,
+        })
+        .where(eq(paymentEvents.id, event.id))
+        .returning()
+        .get();
     });
   }
 

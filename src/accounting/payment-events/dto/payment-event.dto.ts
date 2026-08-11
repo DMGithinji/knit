@@ -1,4 +1,13 @@
-import { IsIn, IsInt, IsISO8601, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import {
+  IsIn,
+  IsInt,
+  IsISO8601,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  Min,
+  ValidateIf,
+} from 'class-validator';
 
 export class PaymentEventDto {
   @IsString()
@@ -29,4 +38,22 @@ export class PaymentEventDto {
   @IsOptional()
   @IsString()
   reason?: string;
+}
+
+export class ManualPaymentEventResolutionDto {
+  @IsIn(['apply_verified_zar', 'record_no_effect'])
+  decision!: 'apply_verified_zar' | 'record_no_effect';
+
+  @ValidateIf((input: ManualPaymentEventResolutionDto) => input.decision === 'apply_verified_zar')
+  @IsInt()
+  @Min(1)
+  verifiedAmountCents?: number;
+
+  @IsString()
+  @IsNotEmpty()
+  resolvedBy!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  resolutionReason!: string;
 }
