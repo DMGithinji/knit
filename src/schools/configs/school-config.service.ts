@@ -1,5 +1,10 @@
 import { createHash } from 'node:crypto';
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
 import { and, desc, eq, max } from 'drizzle-orm';
 import { DatabaseService } from '@/database/database.service';
 import { SchoolConfig, schoolConfigActivations, schoolConfigVersions } from '@/database/schema';
@@ -18,6 +23,14 @@ function serializeConfig(config: SchoolConfig): string {
 
 function checksum(config: SchoolConfig): string {
   return createHash('sha256').update(serializeConfig(config)).digest('hex');
+}
+
+function verifyChecksum(version: { id: string; config: SchoolConfig; checksum: string }): void {
+  if (checksum(version.config) !== version.checksum) {
+    throw new InternalServerErrorException(
+      `Configuration integrity check failed for version ${version.id}`,
+    );
+  }
 }
 
 @Injectable()
@@ -69,6 +82,8 @@ export class SchoolConfigService {
         throw new NotFoundException(`Configuration version ${configVersionId} was not found`);
       }
 
+      verifyChecksum(version);
+
       const current = transaction
         .select()
         .from(schoolConfigActivations)
@@ -113,17 +128,22 @@ export class SchoolConfigService {
       throw new NotFoundException(`School ${schoolId} has no active configuration`);
     }
 
+    verifyChecksum(active.version);
+
     return active;
   }
 
   getHistory(schoolId: string) {
     this.schools.findById(schoolId);
 
-    return this.database.db
+    const history = this.database.db
       .select()
       .from(schoolConfigVersions)
       .where(eq(schoolConfigVersions.schoolId, schoolId))
       .orderBy(desc(schoolConfigVersions.version))
       .all();
+
+    history.forEach(verifyChecksum);
+    return history;
   }
 }

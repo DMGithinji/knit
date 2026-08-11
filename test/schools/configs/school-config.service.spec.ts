@@ -1,4 +1,4 @@
-import { ConflictException } from '@nestjs/common';
+import { ConflictException, InternalServerErrorException } from '@nestjs/common';
 import { SchoolConfigService } from '@/schools/configs/school-config.service';
 import { SchoolProfileService } from '@/schools/profile/school-profile.service';
 import { createTestDatabase, TestDatabase } from '@test/helpers/test-database';
@@ -126,5 +126,49 @@ describe('SchoolConfigService', () => {
         .prepare('DELETE FROM school_config_versions WHERE id = ?')
         .run(version.id),
     ).toThrow('school configuration versions are immutable');
+  });
+
+  it('refuses to read an active configuration whose checksum no longer matches', () => {
+    const school = schools.create({ name: 'Knit Academy' });
+    const version = configs.createVersion(school.id, {
+      config: ORIGINAL_CONFIG,
+      createdBy: 'operator@knit.test',
+      changeReason: 'Initial onboarding configuration',
+    });
+    configs.activateVersion(school.id, version.id, {
+      expectedCurrentVersionId: null,
+      activatedBy: 'operator@knit.test',
+      activationReason: 'Initial activation',
+    });
+
+    testDatabase.database.connection.exec('DROP TRIGGER school_config_versions_prevent_update');
+    testDatabase.database.connection
+      .prepare('UPDATE school_config_versions SET config = ? WHERE id = ?')
+      .run(JSON.stringify({ ...ORIGINAL_CONFIG, gracePeriodDays: 1 }), version.id);
+
+    expect(() => configs.getActiveConfig(school.id)).toThrow(InternalServerErrorException);
+    expect(() => configs.getHistory(school.id)).toThrow(InternalServerErrorException);
+  });
+
+  it('refuses to activate a configuration whose checksum no longer matches', () => {
+    const school = schools.create({ name: 'Knit Academy' });
+    const version = configs.createVersion(school.id, {
+      config: ORIGINAL_CONFIG,
+      createdBy: 'operator@knit.test',
+      changeReason: 'Initial onboarding configuration',
+    });
+
+    testDatabase.database.connection.exec('DROP TRIGGER school_config_versions_prevent_update');
+    testDatabase.database.connection
+      .prepare('UPDATE school_config_versions SET config = ? WHERE id = ?')
+      .run(JSON.stringify({ ...ORIGINAL_CONFIG, gracePeriodDays: 1 }), version.id);
+
+    expect(() =>
+      configs.activateVersion(school.id, version.id, {
+        expectedCurrentVersionId: null,
+        activatedBy: 'operator@knit.test',
+        activationReason: 'Activate corrupted version',
+      }),
+    ).toThrow(InternalServerErrorException);
   });
 });
