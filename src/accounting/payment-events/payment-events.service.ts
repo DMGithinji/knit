@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { and, asc, eq, inArray } from 'drizzle-orm';
+import { and, asc, eq, inArray, or } from 'drizzle-orm';
 import { DatabaseService } from '@/database/database.service';
 import {
   familyAccounts,
@@ -173,7 +173,13 @@ export class PaymentEventsService {
       .where(
         and(
           eq(paymentEvents.schoolId, schoolId),
-          inArray(paymentEvents.processingStatus, ['received', 'unresolved']),
+          or(
+            eq(paymentEvents.processingStatus, 'received'),
+            and(
+              eq(paymentEvents.processingStatus, 'unresolved'),
+              inArray(paymentEvents.processingReason, ['family_not_found', 'invoice_not_found']),
+            ),
+          ),
         ),
       )
       .orderBy(asc(paymentEvents.occurredAt), asc(paymentEvents.id))

@@ -211,6 +211,12 @@ describe('PaymentEventsService', () => {
       event_id: 'evt_already_applied',
       occurred_at: '2026-08-01T09:16:22Z',
     });
+    const needsHumanReview = service.ingest(schoolId, {
+      ...baseEvent,
+      event_id: 'evt_usd_batch',
+      currency: 'USD',
+      occurred_at: '2026-08-01T09:17:22Z',
+    });
 
     invoices.create(schoolId, familyAccountId, {
       invoiceReference: 'inv_late_batch',
@@ -241,6 +247,10 @@ describe('PaymentEventsService', () => {
       }),
     ]);
     expect(testDatabase.database.db.select().from(ledgerEntries).all()).toHaveLength(3);
+    expect(service.findById(schoolId, needsHumanReview.event.id)).toMatchObject({
+      processingStatus: 'unresolved',
+      processingReason: 'unsupported_currency_requires_review',
+    });
 
     expect(service.reconcilePending(schoolId)).toMatchObject({ attemptedCount: 0 });
     expect(testDatabase.database.db.select().from(ledgerEntries).all()).toHaveLength(3);
