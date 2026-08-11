@@ -1,5 +1,9 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
-import { ManualPaymentEventResolutionDto, PaymentEventDto } from './dto/payment-event.dto';
+import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
+import {
+  ManualPaymentEventResolutionDto,
+  PaymentEventDto,
+  SearchPaymentEventsDto,
+} from './dto/payment-event.dto';
 import { PaymentEventsService } from './payment-events.service';
 
 @Controller('schools/:schoolId/payment-events')
@@ -14,6 +18,11 @@ export class PaymentEventsController {
   @Post('reconcile-pending')
   reconcilePending(@Param('schoolId') schoolId: string) {
     return this.paymentEvents.reconcilePending(schoolId);
+  }
+
+  @Get()
+  search(@Param('schoolId') schoolId: string, @Query() query: SearchPaymentEventsDto) {
+    return this.paymentEvents.search(schoolId, query);
   }
 
   @Get(':eventId')
