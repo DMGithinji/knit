@@ -7,6 +7,10 @@ provider callbacks are captured as immutable events, reconciled into an
 idempotent ledger, and used to produce an explainable family balance with any
 exceptions clearly surfaced for review.
 
+## Live walkthrough
+
+[Watch the live walkthrough](https://www.youtube.com/watch?v=ytN_Oi-PemI)
+
 ## Run locally
 
 Requirements: Node.js 22+ and pnpm.
