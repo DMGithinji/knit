@@ -1,0 +1,122 @@
+erDiagram
+    schools ||--o{ family_accounts : "has"
+    schools ||--o{ school_config_versions : "configured by"
+    schools ||--o{ school_config_activations : "activates"
+    schools ||--o{ payment_events : "receives"
+
+    school_config_versions ||--o{ school_config_activations : "made live by"
+
+    family_accounts ||--o{ students : "has"
+    family_accounts ||--o{ invoices : "owes"
+    family_accounts ||--o{ invoice_line_items : "scopes"
+    family_accounts ||--o{ ledger_entries : "scopes"
+    family_accounts |o--o{ payment_events : "linked once matched"
+
+    invoices ||--o{ invoice_line_items : "composed of"
+    invoices |o--o{ ledger_entries : "optionally settled by"
+    students |o--o{ invoice_line_items : "charged for"
+
+    payment_events ||--o| ledger_entries : "at most one"
+    payment_events ||--o| payment_event_resolutions : "at most one"
+
+    schools {
+        text id PK
+        text name
+        text status "active | inactive"
+        text created_at
+        text updated_at
+    }
+    school_config_versions {
+        text id PK
+        text school_id FK
+        integer version UK "unique per school"
+        json config "immutable snapshot"
+        text checksum "sha256 of config"
+        text created_by
+        text change_reason
+        text created_at
+    }
+    school_config_activations {
+        text id PK
+        text school_id FK
+        text config_version_id FK
+        text previous_config_version_id "nullable"
+        integer sequence UK "unique per school"
+        text activated_by
+        text activation_reason
+        text created_at
+    }
+    family_accounts {
+        text id PK
+        text school_id FK
+        text account_reference UK "unique per school"
+        text display_name
+        text created_at
+    }
+    students {
+        text id PK
+        text family_account_id FK
+        text student_reference UK "unique per family"
+        text name
+        text created_at
+    }
+    invoices {
+        text id PK
+        text family_account_id FK
+        text invoice_reference UK "unique per family"
+        text currency "ZAR"
+        text issued_at
+        text due_at
+        text created_at
+    }
+    invoice_line_items {
+        text id PK
+        text family_account_id FK
+        text invoice_id FK
+        text student_id FK "nullable"
+        text description
+        integer amount_cents "CHECK > 0"
+        text created_at
+    }
+    payment_events {
+        text id PK
+        text school_id FK
+        text family_account_id FK "null until matched"
+        text provider_event_id UK "unique per school"
+        text type "payment.succeeded | payment.failed | payment.refunded"
+        text family_reference "as sent by provider"
+        text invoice_reference "as sent by provider"
+        integer amount_cents "may be invalid"
+        text currency "may be non-ZAR"
+        text occurred_at
+        text provider_reason "nullable"
+        json raw_payload "immutable"
+        text processing_status "received | applied | applied_requires_review | recorded_no_effect | unresolved | rejected"
+        text processing_reason "nullable"
+        text related_provider_event_id "nullable; similar payment"
+        text resolved_at "nullable"
+        text created_at
+        text updated_at
+    }
+    ledger_entries {
+        text id PK
+        text school_id FK
+        text family_account_id FK
+        text invoice_id FK "nullable; family-level payment"
+        text payment_event_id FK "UNIQUE"
+        text kind "payment | refund"
+        integer amount_cents "CHECK > 0"
+        text currency "ZAR"
+        text occurred_at
+        text created_at
+    }
+    payment_event_resolutions {
+        text id PK
+        text school_id FK
+        text payment_event_id FK "UNIQUE"
+        text decision "apply_verified_zar | record_no_effect"
+        integer verified_amount_cents "nullable"
+        text resolved_by
+        text resolution_reason
+        text created_at
+    }

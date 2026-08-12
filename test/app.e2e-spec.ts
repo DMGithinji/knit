@@ -4,6 +4,7 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '@/app.module';
 import { DatabaseService } from '@/database/database.service';
+import { configureOpenApi } from '@/openapi';
 import { createTestDatabase, TestDatabase } from '@test/helpers/test-database';
 
 describe('Application (e2e)', () => {
@@ -21,6 +22,7 @@ describe('Application (e2e)', () => {
 
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(new ValidationPipe({ transform: true, whitelist: true }));
+    configureOpenApi(app);
     await app.init();
   });
 
@@ -100,6 +102,33 @@ describe('Application (e2e)', () => {
       .get(`/schools/${schoolId}/payment-events`)
       .query({ linked: 'sometimes' })
       .expect(400);
+  });
+
+  it('publishes the OpenAPI contract', async () => {
+    await request(app.getHttpServer()).get('/docs').expect(200).expect('Content-Type', /html/);
+    const response = await request(app.getHttpServer()).get('/docs-json').expect(200);
+    const document = response.body as {
+      info: { title: string };
+      paths: Record<
+        string,
+        Record<string, { summary?: string; parameters?: Array<{ name: string }> }>
+      >;
+    };
+
+    expect(document.info.title).toBe('Knit school billing API');
+    expect(document.paths['/schools']?.post?.summary).toBe('Create a school');
+    expect(document.paths['/schools/{schoolId}/payment-events/callback']?.post).toBeDefined();
+    expect(
+      document.paths['/schools/{schoolId}/payment-events/reconcile-pending']?.post,
+    ).toBeDefined();
+    const paymentEventSearch = document.paths['/schools/{schoolId}/payment-events']?.get;
+    expect(paymentEventSearch?.summary).toBe('Search payment events for a school');
+    expect(paymentEventSearch?.parameters?.map(({ name }) => name)).toEqual(
+      expect.arrayContaining(['status', 'linked', 'occurredFrom', 'occurredTo', 'limit', 'offset']),
+    );
+    expect(
+      document.paths['/schools/{schoolId}/families/{familyAccountId}/balance']?.get,
+    ).toBeDefined();
   });
 
   afterEach(async () => {
